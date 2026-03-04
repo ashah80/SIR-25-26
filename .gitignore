@@ -1,0 +1,9 @@
+FakeAVCeleb_v1.2/
+*.pth
+*.pt
+*.ckpt
+*.h5
+*.mp4
+*.zip
+__pycache__/
+.ipynb_checkpoints/
