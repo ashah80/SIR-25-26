@@ -1,0 +1,501 @@
+source_id,race,gender,original_path,new_path,split
+id00076,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id00076/00109.mp4,train
+id00166,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id00166/00010.mp4,train
+id00173,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id00173/00118.mp4,train
+id00366,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id00366/00118.mp4,train
+id00391,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id00391/00052.mp4,train
+id00475,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id00475/00099.mp4,train
+id00476,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id00476/00109.mp4,train
+id00478,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id00478/00206.mp4,train
+id00518,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id00518/00031.mp4,train
+id00701,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id00701/00092.mp4,test
+id00761,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id00761/00072.mp4,train
+id00781,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id00781/00092.mp4,train
+id00830,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id00830/00143.mp4,train
+id00944,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id00944/00135.mp4,train
+id00987,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id00987/00160.mp4,train
+id01036,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01036/00010.mp4,test
+id01076,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01076/00005.mp4,train
+id01170,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01170/00021.mp4,train
+id01171,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01171/00053.mp4,train
+id01179,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01179/00160.mp4,train
+id01207,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01207/00320.mp4,train
+id01236,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01236/00005.mp4,train
+id01392,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01392/00167.mp4,train
+id01452,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01452/00001.mp4,train
+id01521,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01521/00109.mp4,test
+id01528,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01528/00017.mp4,val
+id01530,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01530/00002.mp4,train
+id01544,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01544/00044.mp4,train
+id01597,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01597/00005.mp4,train
+id01598,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01598/00044.mp4,train
+id01610,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01610/00090.mp4,train
+id01637,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01637/00002.mp4,train
+id01691,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01691/00045.mp4,train
+id01717,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01717/00005.mp4,train
+id01779,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01779/00010.mp4,test
+id01835,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01835/00130.mp4,train
+id01856,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01856/00006.mp4,val
+id01920,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01920/00099.mp4,train
+id01933,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01933/00028.mp4,train
+id01972,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01972/00078.mp4,test
+id01995,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id01995/00071.mp4,train
+id02005,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id02005/00052.mp4,test
+id02040,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id02040/00476.mp4,test
+id02051,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id02051/00015.mp4,train
+id02268,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id02268/00036.mp4,val
+id02296,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id02296/00019.mp4,test
+id02316,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id02316/00094.mp4,train
+id02342,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id02342/00191.mp4,test
+id02494,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id02494/00050.mp4,test
+id04727,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/men/id04727/00007.mp4,test
+id00220,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id00220/00027.mp4,train
+id00359,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id00359/00053.mp4,train
+id00371,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id00371/00099.mp4,train
+id00460,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id00460/00005.mp4,test
+id00568,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id00568/00384.mp4,val
+id00577,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id00577/00010.mp4,test
+id00592,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id00592/00017.mp4,train
+id00707,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id00707/00052.mp4,train
+id00829,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id00829/00271.mp4,train
+id00832,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id00832/00078.mp4,test
+id01178,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id01178/00028.mp4,test
+id01532,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id01532/00065.mp4,test
+id01661,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id01661/00059.mp4,train
+id01783,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id01783/00015.mp4,test
+id01838,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id01838/00126.mp4,train
+id01907,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id01907/00148.mp4,test
+id02071,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id02071/00195.mp4,train
+id02301,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id02301/00092.mp4,train
+id02508,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id02508/00083.mp4,train
+id02586,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id02586/00042.mp4,train
+id02617,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id02617/00028.mp4,test
+id02721,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id02721/00424.mp4,test
+id02808,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id02808/00056.mp4,train
+id02824,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id02824/00130.mp4,train
+id02838,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id02838/00080.mp4,train
+id02948,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id02948/00298.mp4,test
+id03103,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id03103/00130.mp4,train
+id03569,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id03569/00065.mp4,train
+id03656,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id03656/00052.mp4,train
+id03658,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id03658/00077.mp4,test
+id03713,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id03713/00249.mp4,train
+id03747,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id03747/00273.mp4,train
+id04055,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id04055/00001.mp4,train
+id04245,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id04245/00072.mp4,train
+id04374,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id04374/00032.mp4,train
+id04376,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id04376/00181.mp4,train
+id04437,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id04437/00002.mp4,test
+id04540,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id04540/00078.mp4,train
+id04547,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id04547/00052.mp4,train
+id04689,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id04689/00005.mp4,train
+id04705,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id04705/00408.mp4,test
+id04736,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id04736/00083.mp4,test
+id04820,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id04820/00015.mp4,test
+id04939,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id04939/00174.mp4,train
+id05106,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id05106/00078.mp4,train
+id05231,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id05231/00149.mp4,test
+id05235,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id05235/00052.mp4,train
+id05251,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id05251/00033.mp4,train
+id05252,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id05252/00052.mp4,test
+id05980,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/African/women/id05980/00143.mp4,train
+id00018,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00018/00181.mp4,train
+id00020,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00020/00206.mp4,val
+id00021,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00021/00010.mp4,train
+id00029,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00029/00288.mp4,train
+id00049,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00049/00118.mp4,train
+id00052,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00052/00015.mp4,train
+id00060,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00060/00307.mp4,train
+id00062,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00062/00278.mp4,train
+id00087,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00087/00002.mp4,test
+id00088,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00088/00005.mp4,test
+id00169,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00169/00021.mp4,train
+id00179,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00179/00143.mp4,train
+id00184,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00184/00241.mp4,val
+id00243,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00243/00037.mp4,train
+id00264,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00264/00257.mp4,train
+id00345,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00345/00243.mp4,train
+id00529,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00529/00409.mp4,train
+id00696,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00696/00005.mp4,train
+id00708,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00708/00043.mp4,train
+id00775,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00775/00092.mp4,train
+id00777,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00777/00160.mp4,test
+id00943,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00943/00304.mp4,train
+id00945,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00945/00107.mp4,test
+id00971,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id00971/00253.mp4,train
+id01035,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id01035/00012.mp4,train
+id01042,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id01042/00154.mp4,train
+id01044,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id01044/00336.mp4,train
+id01048,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id01048/00160.mp4,train
+id01096,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id01096/00037.mp4,test
+id01105,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id01105/00083.mp4,train
+id01124,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id01124/00063.mp4,train
+id01163,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id01163/00195.mp4,train
+id01168,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id01168/00028.mp4,test
+id01172,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id01172/00015.mp4,test
+id01175,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id01175/00025.mp4,train
+id01182,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id01182/00167.mp4,train
+id01192,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id01192/00217.mp4,train
+id01201,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id01201/00028.mp4,train
+id01210,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id01210/00283.mp4,train
+id01211,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id01211/00023.mp4,train
+id01239,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id01239/00280.mp4,train
+id03525,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id03525/00048.mp4,val
+id03668,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id03668/00143.mp4,train
+id03678,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id03678/00078.mp4,train
+id03757,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id03757/00149.mp4,train
+id04034,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id04034/00009.mp4,test
+id04073,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id04073/00021.mp4,train
+id04216,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id04216/00470.mp4,train
+id04219,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id04219/00130.mp4,train
+id04221,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/men/id04221/00053.mp4,test
+id00025,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00025/00025.mp4,train
+id00097,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00097/00162.mp4,test
+id00098,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00098/00004.mp4,train
+id00100,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00100/00028.mp4,train
+id00145,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00145/00043.mp4,val
+id00180,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00180/00206.mp4,train
+id00190,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00190/00072.mp4,test
+id00231,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00231/00037.mp4,train
+id00261,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00261/00048.mp4,train
+id00272,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00272/00195.mp4,train
+id00291,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00291/00052.mp4,train
+id00381,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00381/00030.mp4,test
+id00383,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00383/00171.mp4,test
+id00385,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00385/00439.mp4,train
+id00398,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00398/00016.mp4,test
+id00418,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00418/00052.mp4,train
+id00428,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00428/00017.mp4,train
+id00431,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00431/00039.mp4,train
+id00458,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00458/00072.mp4,train
+id00462,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00462/00143.mp4,test
+id00555,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00555/00005.mp4,train
+id00575,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00575/00092.mp4,test
+id00616,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00616/00305.mp4,val
+id00618,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00618/00195.mp4,train
+id00680,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00680/00110.mp4,test
+id00752,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00752/00340.mp4,train
+id00835,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00835/00195.mp4,train
+id00841,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00841/00078.mp4,test
+id00842,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00842/00043.mp4,test
+id00848,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id00848/00028.mp4,train
+id01004,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id01004/00028.mp4,train
+id01005,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id01005/00028.mp4,train
+id01075,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id01075/00160.mp4,train
+id01091,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id01091/00236.mp4,train
+id01216,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id01216/00025.mp4,test
+id01217,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id01217/00005.mp4,train
+id01223,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id01223/00255.mp4,val
+id01225,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id01225/00300.mp4,train
+id01227,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id01227/00052.mp4,val
+id01231,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id01231/00015.mp4,test
+id01238,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id01238/00037.mp4,train
+id01245,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id01245/00028.mp4,test
+id01248,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id01248/00005.mp4,test
+id02464,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id02464/00002.mp4,train
+id02466,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id02466/00136.mp4,train
+id03556,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id03556/00043.mp4,train
+id03605,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id03605/00048.mp4,train
+id03696,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id03696/00160.mp4,train
+id03707,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id03707/00055.mp4,train
+id03781,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (American)/women/id03781/00113.mp4,train
+id00056,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id00056/00028.mp4,train
+id00126,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id00126/00173.mp4,train
+id00560,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id00560/00041.mp4,train
+id00597,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id00597/00019.mp4,train
+id00740,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id00740/00015.mp4,test
+id00863,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id00863/00069.mp4,train
+id01204,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id01204/00092.mp4,train
+id01212,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id01212/00183.mp4,train
+id01215,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id01215/00001.mp4,val
+id01589,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id01589/00017.mp4,train
+id01683,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id01683/00052.mp4,val
+id02332,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id02332/00055.mp4,test
+id02365,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id02365/00028.mp4,test
+id02493,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id02493/00073.mp4,train
+id02553,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id02553/00043.mp4,train
+id02561,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id02561/02561.mp4,test
+id03028,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id03028/00466.mp4,test
+id03168,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id03168/03168.mp4,test
+id03889,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id03889/00052.mp4,train
+id03965,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id03965/00051.mp4,val
+id04111,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id04111/00015.mp4,test
+id04222,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id04222/00078.mp4,val
+id04687,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id04687/00066.mp4,train
+id04691,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id04691/1.mp4,test
+id04726,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id04726/00245.mp4,train
+id04774,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id04774/00032.mp4,train
+id04789,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id04789/002121.mp4,train
+id04884,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id04884/00028.mp4,train
+id05268,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id05268/00010.mp4,train
+id05332,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id05332/00065.mp4,train
+id05383,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id05383/00015.mp4,train
+id05479,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id05479/05479.mp4,test
+id05743,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id05743/00015.mp4,test
+id06152,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id06152/06152.mp4,train
+id06269,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id06269/00005.mp4,train
+id06467,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id06467/00010.mp4,test
+id06470,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id06470/00052.mp4,train
+id06535,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id06535/00183.mp4,train
+id06591,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id06591/00021.mp4,train
+id06594,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id06594/00002.mp4,train
+id06776,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id06776/00021.mp4,test
+id06807,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id06807/00015.mp4,test
+id06878,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id06878/00001.mp4,test
+id07102,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id07102/00052.mp4,test
+id07338,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id07338/00003.mp4,train
+id08299,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id08299/00110.mp4,train
+id08613,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id08613/00074.mp4,test
+id08652,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id08652/00006.mp4,train
+id09053,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id09053/00005.mp4,train
+id09143,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/men/id09143/00056.mp4,val
+id00137,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id00137/00025.mp4,train
+id00363,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id00363/00014.mp4,train
+id00430,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id00430/00209.mp4,test
+id00566,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id00566/00032.mp4,train
+id00579,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id00579/00030.mp4,val
+id00582,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id00582/00006.mp4,train
+id00763,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id00763/00074.mp4,train
+id00935,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id00935/00005.mp4,test
+id01281,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id01281/00040.mp4,train
+id01451,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id01451/00099.mp4,train
+id02587,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id02587/00020.mp4,train
+id02807,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id02807/00032.mp4,train
+id03211,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id03211/00032.mp4,train
+id03379,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id03379/00032.mp4,train
+id03940,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id03940/00025.mp4,train
+id04057,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id04057/00015.mp4,train
+id04066,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id04066/00013.mp4,train
+id04144,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id04144/00028.mp4,train
+id04414,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id04414/00001.mp4,train
+id04701,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id04701/00017.mp4,val
+id05576,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id05576/00368.mp4,test
+id05620,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id05620/00005.mp4,train
+id05631,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id05631/00073.mp4,test
+id05844,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id05844/00072.mp4,train
+id06054,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id06054/00010.mp4,train
+id06060,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id06060/00219.mp4,test
+id06061,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id06061/00002.mp4,test
+id06065,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id06065/00160.mp4,train
+id06066,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id06066/00028.mp4,train
+id06158,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id06158/00015.mp4,test
+id06225,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id06225/00005.mp4,test
+id06388,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id06388/00005.mp4,train
+id06427,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id06427/00138.mp4,test
+id06443,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id06443/00232.mp4,train
+id06462,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id06462/00014.mp4,train
+id07039,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id07039/00105.mp4,train
+id07383,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id07383/00011.mp4,train
+id07739,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id07739/00019.mp4,test
+id07799,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id07799/00063.mp4,train
+id07901,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id07901/00040.mp4,train
+id08139,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id08139/00067.mp4,train
+id08397,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id08397/00167.mp4,test
+id08402,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id08402/00092.mp4,train
+id08819,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id08819/00052.mp4,train
+id09116,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id09116/00026.mp4,train
+id09125,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id09125/00098.mp4,test
+id09171,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id09171/00092.mp4,train
+id09174,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id09174/00015.mp4,train
+id09175,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id09175/00072.mp4,train
+id09181,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (East)/women/id09181/00048.mp4,train
+id00055,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00055/00120.mp4,test
+id00063,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00063/00021.mp4,train
+id00171,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00171/00092.mp4,train
+id00183,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00183/00015.mp4,test
+id00185,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00185/00015.mp4,train
+id00186,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00186/00120.mp4,val
+id00187,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00187/00360.mp4,train
+id00192,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00192/00078.mp4,train
+id00225,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00225/00078.mp4,train
+id00241,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00241/00015.mp4,train
+id00253,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00253/00021.mp4,train
+id00265,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00265/00130.mp4,train
+id00266,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00266/00470.mp4,test
+id00282,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00282/00268.mp4,train
+id00292,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00292/00072.mp4,train
+id00305,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00305/00113.mp4,test
+id00306,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00306/00015.mp4,test
+id00358,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00358/00217.mp4,test
+id00368,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00368/00078.mp4,train
+id00415,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00415/00017.mp4,test
+id00498,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00498/00014.mp4,val
+id00519,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00519/00028.mp4,test
+id00520,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00520/00187.mp4,train
+id00535,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00535/00005.mp4,test
+id00548,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00548/00015.mp4,train
+id00554,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00554/00028.mp4,test
+id00559,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00559/00078.mp4,train
+id00594,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00594/00005.mp4,val
+id00694,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00694/00340.mp4,test
+id00709,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00709/00206.mp4,train
+id00909,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00909/00037.mp4,test
+id00919,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00919/00063.mp4,train
+id00946,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00946/00126.mp4,test
+id00963,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00963/00028.mp4,train
+id00981,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00981/00092.mp4,train
+id00990,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00990/00160.mp4,test
+id00999,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id00999/00028.mp4,train
+id01051,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id01051/00322.mp4,train
+id01052,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id01052/00076.mp4,train
+id01058,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id01058/00005.mp4,train
+id01098,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id01098/00044.mp4,test
+id01099,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id01099/00206.mp4,val
+id01102,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id01102/00197.mp4,test
+id01123,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id01123/00072.mp4,train
+id01126,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id01126/00040.mp4,train
+id01154,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id01154/00118.mp4,test
+id01156,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id01156/00078.mp4,train
+id01157,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id01157/00048.mp4,train
+id02567,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id02567/00040.mp4,test
+id03205,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/men/id03205/00150.mp4,train
+id00042,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00042/00028.mp4,train
+id00068,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00068/00004.mp4,train
+id00071,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00071/00014.mp4,test
+id00188,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00188/00020.mp4,train
+id00232,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00232/00025.mp4,train
+id00234,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00234/00063.mp4,train
+id00262,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00262/00028.mp4,test
+id00270,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00270/00088.mp4,train
+id00271,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00271/00028.mp4,val
+id00287,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00287/00005.mp4,test
+id00325,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00325/00015.mp4,test
+id00328,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00328/00092.mp4,train
+id00330,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00330/00118.mp4,test
+id00332,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00332/00293.mp4,train
+id00365,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00365/00078.mp4,val
+id00373,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00373/00028.mp4,train
+id00374,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00374/00311.mp4,train
+id00379,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00379/00043.mp4,test
+id00395,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00395/00420.mp4,test
+id00403,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00403/00052.mp4,test
+id00434,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00434/00046.mp4,test
+id00484,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00484/00202.mp4,train
+id00491,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00491/00122.mp4,train
+id00495,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00495/00027.mp4,train
+id00496,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00496/00015.mp4,train
+id00569,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00569/00239.mp4,test
+id00581,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00581/00010.mp4,train
+id00589,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00589/00130.mp4,test
+id00591,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00591/00001.mp4,train
+id00633,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00633/00088.mp4,train
+id00634,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00634/00078.mp4,test
+id00735,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00735/00037.mp4,test
+id00806,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00806/00005.mp4,train
+id00813,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00813/00169.mp4,train
+id00823,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00823/00125.mp4,train
+id00826,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00826/00065.mp4,test
+id00897,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id00897/00005.mp4,test
+id01001,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id01001/00086.mp4,train
+id01002,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id01002/00043.mp4,train
+id01018,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id01018/00072.mp4,train
+id03371,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id03371/00430.mp4,train
+id03589,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id03589/00002.mp4,test
+id03620,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id03620/00081.mp4,test
+id03649,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id03649/00001.mp4,train
+id03651,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id03651/00092.mp4,train
+id03716,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id03716/00040.mp4,train
+id03816,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id03816/00093.mp4,train
+id03844,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id03844/00028.mp4,test
+id03858,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id03858/00092.mp4,test
+id03941,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Caucasian (European)/women/id03941/00021.mp4,train
+id00032,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id00032/00028.mp4,train
+id00033,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id00033/00276.mp4,test
+id00078,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id00078/00114.mp4,train
+id00082,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id00082/00052.mp4,train
+id00103,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id00103/00241.mp4,train
+id00350,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id00350/00015.mp4,train
+id00414,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id00414/00052.mp4,test
+id00459,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id00459/00382.mp4,test
+id00685,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id00685/00146.mp4,train
+id00732,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id00732/00118.mp4,test
+id00745,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id00745/00165.mp4,train
+id00769,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id00769/00015.mp4,train
+id00773,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id00773/00038.mp4,train
+id00816,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id00816/00118.mp4,train
+id00857,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id00857/00347.mp4,test
+id00860,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id00860/00154.mp4,train
+id03180,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id03180/00039.mp4,train
+id03344,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id03344/00114.mp4,test
+id03599,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id03599/00072.mp4,test
+id03945,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id03945/00063.mp4,test
+id04526,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id04526/00317.mp4,train
+id04537,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id04537/00083.mp4,train
+id04554,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id04554/00118.mp4,val
+id04560,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id04560/00195.mp4,train
+id04561,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id04561/00248.mp4,test
+id04562,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id04562/00221.mp4,train
+id04599,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id04599/00111.mp4,train
+id04601,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id04601/00118.mp4,train
+id04928,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id04928/00027.mp4,val
+id06334,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id06334/00015.mp4,val
+id06354,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id06354/00021.mp4,train
+id06355,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id06355/00347.mp4,test
+id06753,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id06753/00021.mp4,train
+id07058,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id07058/00010.mp4,val
+id07108,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id07108/00412.mp4,train
+id07161,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id07161/00159.mp4,train
+id07163,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id07163/00141.mp4,train
+id07165,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id07165/00368.mp4,train
+id07179,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id07179/00206.mp4,train
+id07182,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id07182/00040.mp4,train
+id07194,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id07194/00014.mp4,train
+id07195,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id07195/00186.mp4,train
+id07200,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id07200/00045.mp4,train
+id07210,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id07210/00005.mp4,test
+id07233,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id07233/00010.mp4,test
+id07463,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id07463/00028.mp4,train
+id07768,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id07768/00143.mp4,train
+id08313,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id08313/00202.mp4,train
+id08314,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id08314/00028.mp4,test
+id08457,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/men/id08457/00417.mp4,train
+id00043,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id00043/00135.mp4,train
+id00080,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id00080/00281.mp4,train
+id00149,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id00149/00284.mp4,test
+id00235,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id00235/00052.mp4,train
+id00417,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id00417/00069.mp4,train
+id00461,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id00461/00043.mp4,train
+id00488,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id00488/00028.mp4,test
+id00739,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id00739/00005.mp4,train
+id00747,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id00747/00053.mp4,test
+id01026,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id01026/00083.mp4,train
+id02089,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id02089/00092.mp4,test
+id02310,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id02310/00139.mp4,train
+id02619,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id02619/00015.mp4,train
+id03559,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id03559/00023.mp4,train
+id03815,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id03815/00118.mp4,test
+id03897,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id03897/00021.mp4,train
+id03985,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id03985/00005.mp4,test
+id04070,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id04070/00072.mp4,train
+id04490,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id04490/00054.mp4,train
+id04529,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id04529/00186.mp4,test
+id04530,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id04530/00231.mp4,train
+id04564,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id04564/00417.mp4,train
+id04582,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id04582/00180.mp4,train
+id04583,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id04583/00077.mp4,test
+id04927,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id04927/00013.mp4,test
+id05434,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id05434/00052.mp4,train
+id05435,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id05435/00107.mp4,train
+id05478,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id05478/00135.mp4,train
+id05845,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id05845/00027.mp4,val
+id05920,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id05920/00161.mp4,train
+id05931,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id05931/00013.mp4,test
+id06232,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id06232/00025.mp4,train
+id06254,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id06254/00043.mp4,val
+id06268,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id06268/00159.mp4,train
+id06343,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id06343/00023.mp4,test
+id06428,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id06428/00043.mp4,test
+id06437,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id06437/00028.mp4,train
+id06438,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id06438/00110.mp4,train
+id06439,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id06439/00118.mp4,test
+id06445,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id06445/00150.mp4,test
+id06752,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id06752/00221.mp4,val
+id07008,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id07008/00175.mp4,test
+id07049,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id07049/00043.mp4,train
+id07051,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id07051/00083.mp4,test
+id07078,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id07078/00405.mp4,test
+id07136,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id07136/00052.mp4,train
+id07236,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id07236/00143.mp4,train
+id07377,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id07377/00025.mp4,test
+id07686,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id07686/00254.mp4,train
+id07689,,,,/home/jupyter-ashah2/SIR-25-26/FakeAVCeleb_v1.2/RealVideo-RealAudio/Asian (South)/women/id07689/00028.mp4,train
