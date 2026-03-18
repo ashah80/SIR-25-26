@@ -53,19 +53,38 @@ def load_referee_model(config_path: str, checkpoint_path: str = None) -> Referee
 
 def create_dummy_data(batch_size: int = 1, device: str = 'cuda'):
     """Create dummy input data for testing."""
-    # Use smaller tensors to avoid memory issues
-    # Audio: (B, S, 1, F, Ta) = (B, 4, 1, 32, 32) - Much smaller
-    target_audio = torch.randn(batch_size, 4, 1, 32, 32, device=device)
-    ref_audio = torch.randn(batch_size, 4, 1, 32, 32, device=device)
+    # Use original Referee dimensions if we have the real model, smaller for dummy
+    # Let's try original dimensions first, fall back to smaller if memory issues
 
-    # Video: (B, S, Tv, C, H, W) = (B, 4, 8, 3, 64, 64) - Much smaller
-    target_video = torch.rand(batch_size, 4, 8, 3, 64, 64, device=device)
-    ref_video = torch.rand(batch_size, 4, 8, 3, 64, 64, device=device)
+    try:
+        # Original Referee dimensions (what the real model expects)
+        # Audio: (B, S, 1, F, Ta) = (B, 8, 1, 128, 66)
+        target_audio = torch.randn(batch_size, 8, 1, 128, 66, device=device)
+        ref_audio = torch.randn(batch_size, 8, 1, 128, 66, device=device)
 
-    # Labels (fake samples - we want to make them appear real)
-    labels_rf = torch.ones(batch_size, dtype=torch.long, device=device)
+        # Video: (B, S, Tv, C, H, W) = (B, 8, 16, 3, 224, 224)
+        target_video = torch.rand(batch_size, 8, 16, 3, 224, 224, device=device)
+        ref_video = torch.rand(batch_size, 8, 16, 3, 224, 224, device=device)
 
-    return target_audio, target_video, ref_audio, ref_video, labels_rf
+        # Labels (fake samples - we want to make them appear real)
+        labels_rf = torch.ones(batch_size, dtype=torch.long, device=device)
+
+        return target_audio, target_video, ref_audio, ref_video, labels_rf
+
+    except RuntimeError as e:
+        if "out of memory" in str(e).lower():
+            print("⚠️  GPU memory low, using smaller tensors...")
+
+            # Fallback to smaller tensors
+            target_audio = torch.randn(batch_size, 4, 1, 32, 32, device=device)
+            ref_audio = torch.randn(batch_size, 4, 1, 32, 32, device=device)
+            target_video = torch.rand(batch_size, 4, 8, 3, 64, 64, device=device)
+            ref_video = torch.rand(batch_size, 4, 8, 3, 64, 64, device=device)
+            labels_rf = torch.ones(batch_size, dtype=torch.long, device=device)
+
+            return target_audio, target_video, ref_audio, ref_video, labels_rf
+        else:
+            raise e
 
 
 def demo_quick_test(model: nn.Module, device: str = 'cuda'):
@@ -247,63 +266,77 @@ def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Using device: {device}")
 
-    # Load model (you'll need to provide your own config and checkpoint)
-    config_path = "../configs/pair_sync.yaml"  # Fixed path - go up one directory
-    checkpoint_path = None  # Set to your checkpoint path if available
+    # Load model (try multiple possible paths)
+    config_path = "../configs/pair_sync.yaml"
+
+    # Try different possible paths for the pretrained model
+    possible_model_paths = [
+        "../model/pretrained/pretrained.pth",      # User's mentioned path
+        "../model/pretrained/pretrained.pt",       # Alternative extension
+        "model/pretrained/pretrained.pth",         # Without ../
+        "model/pretrained/pretrained.pt",          # Alternative
+    ]
+
+    checkpoint_path = None
+    for path in possible_model_paths:
+        if Path(path).exists():
+            checkpoint_path = path
+            break
+
+    if checkpoint_path:
+        print(f"🔍 Found pretrained model at: {checkpoint_path}")
+    else:
+        print("⚠️  No pretrained model found, will use dummy model")
 
     try:
-        model = load_referee_model(config_path, checkpoint_path)
-        model = model.to(device)
+        if checkpoint_path:
+            model = load_referee_model(config_path, checkpoint_path)
+            model = model.to(device)
+            print("🎉 Using REAL pretrained Referee model - attacks should work much better!")
+        else:
+            raise FileNotFoundError("No pretrained model found")
     except Exception as e:
-        print(f"❌ Failed to load model: {e}")
-        print("Creating dummy model for demo purposes...")
+        print(f"❌ Failed to load real model: {e}")
+        print("Creating improved dummy model for demo purposes...")
 
-        # Create a minimal dummy model for demo that supports gradients
+        # Create a much better dummy model with correct dimensions
         class DummyReferee(nn.Module):
             def __init__(self):
                 super().__init__()
-                # Use much smaller projections to avoid memory issues
-                # Pool the inputs first to reduce dimensionality
-                self.audio_pool = nn.AdaptiveAvgPool2d((8, 8))  # (B, S, 1, 128, 66) -> pool last 2 dims
-                self.video_pool = nn.AdaptiveAvgPool3d((4, 16, 16))  # Pool spatial and temporal
-
-                # Smaller linear layers
-                self.audio_proj = nn.Linear(8 * 8, 64)  # Much smaller
-                self.video_proj = nn.Linear(4 * 16 * 16 * 3, 64)  # Much smaller
+                # Handle both small and large input dimensions flexibly
 
                 self.classifier = nn.Sequential(
-                    nn.Linear(128, 64),
+                    nn.Linear(2, 64),      # Just 2 features: one from audio, one from video
                     nn.ReLU(),
-                    nn.Dropout(0.1),
-                    nn.Linear(64, 2)
+                    nn.Dropout(0.2),
+                    nn.Linear(64, 32),
+                    nn.ReLU(),
+                    nn.Linear(32, 2)
                 )
 
             def forward(self, target_vis, target_aud, ref_vis, ref_aud, **kwargs):
-                batch_size = target_vis.shape[0]
+                B = target_vis.shape[0]
 
-                # Process inputs with pooling to reduce size
-                # Audio: (B, S, 1, F, Ta) -> (B, S, 1, 8, 8)
-                audio_pooled = self.audio_pool(target_aud.view(-1, target_aud.shape[-2], target_aud.shape[-1]))
-                audio_pooled = audio_pooled.view(batch_size, -1)  # Flatten
+                # Ultra-simple approach: just take global means
+                # This works for any input size and avoids dimension issues
 
-                # Video: (B, S, Tv, C, H, W) -> (B, S, 4, C, 16, 16)
-                video_reshaped = target_vis.view(-1, target_vis.shape[-3], target_vis.shape[-2], target_vis.shape[-1])
-                video_pooled = self.video_pool(video_reshaped.permute(0, 2, 1, 3, 4))  # (N, C, T, H, W)
-                video_pooled = video_pooled.view(batch_size, -1)  # Flatten
+                # Audio: Any shape -> scalar per batch
+                audio_feat = torch.mean(target_aud, dim=list(range(1, target_aud.ndim)))  # (B,)
 
-                # Project to features (now much smaller)
-                audio_feat = self.audio_proj(audio_pooled)
-                video_feat = self.video_proj(video_pooled)
+                # Video: Any shape -> scalar per batch
+                video_feat = torch.mean(target_vis, dim=list(range(1, target_vis.ndim)))  # (B,)
 
-                # Combine features
-                combined = torch.cat([audio_feat, video_feat], dim=1)
+                # Combine features: (B, 2)
+                combined = torch.stack([audio_feat, video_feat], dim=1)
 
-                # Classification - make it more sensitive to inputs
-                logits_rf = self.classifier(combined)
+                # Scale to make model sensitive to small changes
+                combined_scaled = combined * 50.0  # Amplify effects
 
-                # ID head - also make it depend on inputs slightly
-                id_feat = combined.mean(dim=1, keepdim=True).repeat(1, 2)
-                logits_id = id_feat + torch.randn_like(id_feat) * 0.1
+                # Classification
+                logits_rf = self.classifier(combined_scaled)
+
+                # ID logits - similar but with noise
+                logits_id = self.classifier(combined_scaled * 0.7) + torch.randn(B, 2, device=target_vis.device) * 0.2
 
                 return logits_rf, logits_id
 

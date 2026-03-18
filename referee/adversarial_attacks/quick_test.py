@@ -31,14 +31,9 @@ def main():
         class TestModel(nn.Module):
             def __init__(self):
                 super().__init__()
-                # Use pooling to reduce size like in demo.py
-                self.audio_pool = nn.AdaptiveAvgPool2d((8, 8))
-                self.video_pool = nn.AdaptiveAvgPool3d((4, 16, 16))
-
-                self.audio_proj = nn.Linear(8 * 8, 32)
-                self.video_proj = nn.Linear(4 * 16 * 16 * 3, 32)
+                # Ultra-simple model that works with any input dimensions
                 self.classifier = nn.Sequential(
-                    nn.Linear(64, 32),
+                    nn.Linear(2, 32),
                     nn.ReLU(),
                     nn.Linear(32, 2)
                 )
@@ -46,20 +41,14 @@ def main():
             def forward(self, target_vis, target_aud, ref_vis, ref_aud, **kwargs):
                 B = target_vis.shape[0]
 
-                # Pool inputs to manageable size
-                audio_pooled = self.audio_pool(target_aud.view(-1, target_aud.shape[-2], target_aud.shape[-1]))
-                audio_pooled = audio_pooled.view(B, -1)
+                # Take global means - works for any dimensions
+                audio_feat = torch.mean(target_aud, dim=list(range(1, target_aud.ndim)))
+                video_feat = torch.mean(target_vis, dim=list(range(1, target_vis.ndim)))
 
-                video_reshaped = target_vis.view(-1, target_vis.shape[-3], target_vis.shape[-2], target_vis.shape[-1])
-                video_pooled = self.video_pool(video_reshaped.permute(0, 2, 1, 3, 4))
-                video_pooled = video_pooled.view(B, -1)
+                combined = torch.stack([audio_feat, video_feat], dim=1)
+                combined_scaled = combined * 50.0  # Make sensitive to changes
 
-                # Project features
-                audio_feat = self.audio_proj(audio_pooled)
-                video_feat = self.video_proj(video_pooled)
-                combined = torch.cat([audio_feat, video_feat], dim=1)
-
-                logits_rf = self.classifier(combined)
+                logits_rf = self.classifier(combined_scaled)
                 logits_id = torch.randn(B, 2, device=target_vis.device)
                 return logits_rf, logits_id
 
@@ -78,10 +67,21 @@ def main():
         print("\n🎯 Testing quick attack...")
 
         # Create small test data to avoid memory issues
-        target_audio = torch.randn(1, 4, 1, 32, 32, device=device)
-        target_video = torch.rand(1, 4, 8, 3, 64, 64, device=device)
-        ref_audio = torch.randn(1, 4, 1, 32, 32, device=device)
-        ref_video = torch.rand(1, 4, 8, 3, 64, 64, device=device)
+        try:
+            # Try original dimensions first
+            target_audio = torch.randn(1, 8, 1, 128, 66, device=device)
+            target_video = torch.rand(1, 8, 16, 3, 224, 224, device=device)
+            ref_audio = torch.randn(1, 8, 1, 128, 66, device=device)
+            ref_video = torch.rand(1, 8, 16, 3, 224, 224, device=device)
+        except RuntimeError as e:
+            if "out of memory" in str(e).lower():
+                print("⚠️  Using smaller tensors due to memory constraints")
+                target_audio = torch.randn(1, 4, 1, 32, 32, device=device)
+                target_video = torch.rand(1, 4, 8, 3, 64, 64, device=device)
+                ref_audio = torch.randn(1, 4, 1, 32, 32, device=device)
+                ref_video = torch.rand(1, 4, 8, 3, 64, 64, device=device)
+            else:
+                raise e
         labels_rf = torch.ones(1, dtype=torch.long, device=device)
 
         attacker = RefereeMultiModalPGD(

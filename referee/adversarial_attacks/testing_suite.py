@@ -47,19 +47,29 @@ class RefereeAttackTester:
         Returns:
             Tuple of (target_audio, target_video, ref_audio, ref_video, labels_rf)
         """
-        # Use smaller tensors to avoid memory issues
-        # Audio: (B, S, 1, F, Ta) = (B, 4, 1, 32, 32) - Much smaller than (B, 8, 1, 128, 66)
-        target_audio = torch.randn(batch_size, 4, 1, 32, 32, device=self.device)
-        ref_audio = torch.randn(batch_size, 4, 1, 32, 32, device=self.device)
+        try:
+            # Try original Referee dimensions first
+            target_audio = torch.randn(batch_size, 8, 1, 128, 66, device=self.device)
+            ref_audio = torch.randn(batch_size, 8, 1, 128, 66, device=self.device)
+            target_video = torch.rand(batch_size, 8, 16, 3, 224, 224, device=self.device)
+            ref_video = torch.rand(batch_size, 8, 16, 3, 224, 224, device=self.device)
+            labels_rf = torch.ones(batch_size, dtype=torch.long, device=self.device)
 
-        # Video: (B, S, Tv, C, H, W) = (B, 4, 8, 3, 64, 64) - Much smaller than (B, 8, 16, 3, 224, 224)
-        target_video = torch.rand(batch_size, 4, 8, 3, 64, 64, device=self.device)  # [0,1] range
-        ref_video = torch.rand(batch_size, 4, 8, 3, 64, 64, device=self.device)
+            return target_audio, target_video, ref_audio, ref_video, labels_rf
 
-        # Labels: fake samples (1) - we want to attack these to be classified as real (0)
-        labels_rf = torch.ones(batch_size, dtype=torch.long, device=self.device)
+        except RuntimeError as e:
+            if "out of memory" in str(e).lower():
+                print("  ⚠️  GPU memory low, using smaller test tensors...")
+                # Fallback to smaller tensors
+                target_audio = torch.randn(batch_size, 4, 1, 32, 32, device=self.device)
+                ref_audio = torch.randn(batch_size, 4, 1, 32, 32, device=self.device)
+                target_video = torch.rand(batch_size, 4, 8, 3, 64, 64, device=self.device)
+                ref_video = torch.rand(batch_size, 4, 8, 3, 64, 64, device=self.device)
+                labels_rf = torch.ones(batch_size, dtype=torch.long, device=self.device)
 
-        return target_audio, target_video, ref_audio, ref_video, labels_rf
+                return target_audio, target_video, ref_audio, ref_video, labels_rf
+            else:
+                raise e
 
     def test_gradient_flow(self, batch_size: int = 2) -> Dict[str, bool]:
         """
