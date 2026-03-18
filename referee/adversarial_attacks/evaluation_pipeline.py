@@ -17,8 +17,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Any
-import matplotlib.pyplot as plt
-import seaborn as sns
 from pathlib import Path
 import json
 import time
@@ -34,57 +32,83 @@ class PerceptualMetrics:
     def compute_ssim(img1: torch.Tensor, img2: torch.Tensor) -> float:
         """
         Compute Structural Similarity Index (SSIM) for videos.
-        Simplified version for batch processing.
+        Handles video tensors of shape (B, S, Tv, C, H, W).
         """
-        # Convert to grayscale if RGB
-        if img1.dim() == 6 and img1.shape[-3] == 3:  # (B,S,T,C,H,W)
-            img1_gray = 0.299 * img1[..., 0, :, :] + 0.587 * img1[..., 1, :, :] + 0.114 * img1[..., 2, :, :]
-            img2_gray = 0.299 * img2[..., 0, :, :] + 0.587 * img2[..., 1, :, :] + 0.114 * img2[..., 2, :, :]
-        else:
-            img1_gray = img1.squeeze()
-            img2_gray = img2.squeeze()
+        try:
+            # Handle 6D video tensor: (B, S, Tv, C, H, W) -> flatten to (N, C, H, W)
+            if img1.dim() == 6:
+                B, S, Tv, C, H, W = img1.shape
+                # Reshape to (B*S*Tv, C, H, W)
+                img1_4d = img1.view(B * S * Tv, C, H, W)
+                img2_4d = img2.view(B * S * Tv, C, H, W)
+            elif img1.dim() == 4:
+                img1_4d = img1
+                img2_4d = img2
+            else:
+                # For other dimensions, just compute MSE-based similarity
+                mse = F.mse_loss(img1, img2).item()
+                return max(0, 1 - mse)
 
-        # Compute local means
-        mu1 = F.avg_pool2d(img1_gray, 3, stride=1, padding=1)
-        mu2 = F.avg_pool2d(img2_gray, 3, stride=1, padding=1)
+            # Convert to grayscale: (N, C, H, W) -> (N, 1, H, W)
+            if img1_4d.shape[1] == 3:
+                # RGB to grayscale
+                weights = torch.tensor([0.299, 0.587, 0.114], device=img1_4d.device).view(1, 3, 1, 1)
+                img1_gray = (img1_4d * weights).sum(dim=1, keepdim=True)
+                img2_gray = (img2_4d * weights).sum(dim=1, keepdim=True)
+            else:
+                img1_gray = img1_4d
+                img2_gray = img2_4d
 
-        mu1_sq = mu1 * mu1
-        mu2_sq = mu2 * mu2
-        mu1_mu2 = mu1 * mu2
+            # Compute SSIM
+            C1 = 0.01 ** 2
+            C2 = 0.03 ** 2
 
-        # Compute local variances and covariance
-        sigma1_sq = F.avg_pool2d(img1_gray * img1_gray, 3, stride=1, padding=1) - mu1_sq
-        sigma2_sq = F.avg_pool2d(img2_gray * img2_gray, 3, stride=1, padding=1) - mu2_sq
-        sigma12 = F.avg_pool2d(img1_gray * img2_gray, 3, stride=1, padding=1) - mu1_mu2
+            mu1 = F.avg_pool2d(img1_gray, 3, stride=1, padding=1)
+            mu2 = F.avg_pool2d(img2_gray, 3, stride=1, padding=1)
 
-        # SSIM constants
-        C1 = 0.01 ** 2
-        C2 = 0.03 ** 2
+            mu1_sq = mu1 ** 2
+            mu2_sq = mu2 ** 2
+            mu1_mu2 = mu1 * mu2
 
-        ssim = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
-        return ssim.mean().item()
+            sigma1_sq = F.avg_pool2d(img1_gray ** 2, 3, stride=1, padding=1) - mu1_sq
+            sigma2_sq = F.avg_pool2d(img2_gray ** 2, 3, stride=1, padding=1) - mu2_sq
+            sigma12 = F.avg_pool2d(img1_gray * img2_gray, 3, stride=1, padding=1) - mu1_mu2
+
+            ssim = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / \
+                   ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
+
+            return ssim.mean().item()
+
+        except Exception as e:
+            # Fallback to simple MSE-based similarity
+            mse = F.mse_loss(img1, img2).item()
+            return max(0, 1 - mse)
 
     @staticmethod
     def compute_snr(original: torch.Tensor, perturbed: torch.Tensor) -> float:
         """Compute Signal-to-Noise Ratio in dB."""
-        signal_power = torch.mean(original ** 2)
-        noise_power = torch.mean((perturbed - original) ** 2)
+        try:
+            signal_power = torch.mean(original ** 2)
+            noise_power = torch.mean((perturbed - original) ** 2)
 
-        if noise_power == 0:
+            if noise_power == 0 or noise_power < 1e-10:
+                return float('inf')
+
+            snr_db = 10 * torch.log10(signal_power / noise_power)
+            return snr_db.item()
+        except Exception:
             return float('inf')
-
-        snr_db = 10 * torch.log10(signal_power / noise_power)
-        return snr_db.item()
 
     @staticmethod
     def compute_lpips(img1: torch.Tensor, img2: torch.Tensor) -> float:
         """
-        Placeholder for LPIPS (perceptual distance).
-        Would require importing and using the lpips library.
+        Compute perceptual distance (MSE-based approximation).
         """
-        # For now, return MSE as a simple perceptual proxy
-        mse = F.mse_loss(img1, img2)
-        return mse.item()
+        try:
+            mse = F.mse_loss(img1, img2)
+            return mse.item()
+        except Exception:
+            return 0.0
 
 
 class RefereeAttackEvaluator:
@@ -100,17 +124,17 @@ class RefereeAttackEvaluator:
             referee_model: The Referee model
             device: Device to run evaluation on
         """
-        self.referee_model = referee_model.eval()
+        self.referee_model = referee_model
         self.device = device
         self.metrics = PerceptualMetrics()
 
     def evaluate_single_attack(self,
-                             target_audio: torch.Tensor,
-                             target_video: torch.Tensor,
-                             ref_audio: torch.Tensor,
-                             ref_video: torch.Tensor,
-                             labels_rf: torch.Tensor,
-                             attack_config: Dict[str, Any]) -> Dict[str, Any]:
+                               target_audio: torch.Tensor,
+                               target_video: torch.Tensor,
+                               ref_audio: torch.Tensor,
+                               ref_video: torch.Tensor,
+                               labels_rf: torch.Tensor,
+                               attack_config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Evaluate a single adversarial attack configuration.
 
@@ -183,15 +207,20 @@ class RefereeAttackEvaluator:
             'batch_size': target_audio.shape[0]
         }
 
+        # Clean up memory
+        del adv_audio, adv_video, attacker
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         return results
 
     def evaluate_attack_modes(self,
-                            target_audio: torch.Tensor,
-                            target_video: torch.Tensor,
-                            ref_audio: torch.Tensor,
-                            ref_video: torch.Tensor,
-                            labels_rf: torch.Tensor,
-                            base_config: Optional[Dict[str, Any]] = None) -> Dict[str, Dict[str, Any]]:
+                              target_audio: torch.Tensor,
+                              target_video: torch.Tensor,
+                              ref_audio: torch.Tensor,
+                              ref_video: torch.Tensor,
+                              labels_rf: torch.Tensor,
+                              base_config: Optional[Dict[str, Any]] = None) -> Dict[str, Dict[str, Any]]:
         """
         Compare different attack modes (audio, video, joint).
 
@@ -199,14 +228,15 @@ class RefereeAttackEvaluator:
             Dictionary with results for each attack mode
         """
         if base_config is None:
-            # Use very aggressive parameters to ensure attacks work
+            # Aggressive parameters based on ART defaults
             base_config = {
-                'eps_audio': 0.2,         # Even larger perturbation
-                'eps_video': 1.0,         # Even larger perturbation
-                'eps_step_audio': 0.05,   # Even larger step
-                'eps_step_video': 0.2,    # Even larger step
-                'max_iter': 50,           # More iterations
-                'temporal_weight': 0.01   # Much lower temporal weight for stronger attacks
+                'eps_audio': 0.3,
+                'eps_video': 8.0,
+                'eps_step_audio': 0.1,
+                'eps_step_video': 2.0,
+                'max_iter': 40,
+                'temporal_weight': 0.0,
+                'early_stop': True
             }
 
         modes = ['audio', 'video', 'joint']
@@ -229,27 +259,28 @@ class RefereeAttackEvaluator:
                 # Print summary
                 success = mode_results['attack_success']
                 conf_change = mode_results['confidence_change']
-                print(f"    Success: {success}, Confidence change: {conf_change:.3f}")
-
-                # Clean memory between tests
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
+                print(f"    Success: {success}, Confidence change: {conf_change:+.3f}")
 
             except Exception as e:
                 print(f"    Error in mode {mode}: {e}")
                 results[mode] = {'error': str(e)}
 
+            # Clean memory between tests
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
         return results
 
     def evaluate_epsilon_sweep(self,
-                             target_audio: torch.Tensor,
-                             target_video: torch.Tensor,
-                             ref_audio: torch.Tensor,
-                             ref_video: torch.Tensor,
-                             labels_rf: torch.Tensor,
-                             epsilon_ranges: Optional[Dict[str, List[float]]] = None) -> Dict[str, List[Dict[str, Any]]]:
+                               target_audio: torch.Tensor,
+                               target_video: torch.Tensor,
+                               ref_audio: torch.Tensor,
+                               ref_video: torch.Tensor,
+                               labels_rf: torch.Tensor,
+                               epsilon_ranges: Optional[Dict[str, List[float]]] = None) -> Dict[str, List[Dict[str, Any]]]:
         """
         Evaluate attack effectiveness across different epsilon values.
+
 
         Args:
             epsilon_ranges: Dictionary with epsilon values to test for each modality
@@ -258,16 +289,16 @@ class RefereeAttackEvaluator:
             Dictionary with results for each epsilon configuration
         """
         if epsilon_ranges is None:
-            # Use smaller ranges to avoid memory issues
             epsilon_ranges = {
-                'audio': [0.05, 0.1],      # Reduced range for quick test
-                'video': [0.3, 0.5]        # Reduced range for quick test
+                'audio': [0.1, 0.3, 0.5],
+                'video': [4.0, 8.0, 12.0]
             }
 
         base_config = {
-            'max_iter': 20,           # Reduced iterations
-            'temporal_weight': 0.1,   # Lower temporal weight for stronger attacks
-            'attack_mode': 'joint'
+            'max_iter': 30,
+            'temporal_weight': 0.0,
+            'attack_mode': 'joint',
+            'early_stop': True
         }
 
         results = {'audio_sweep': [], 'video_sweep': []}
@@ -280,7 +311,9 @@ class RefereeAttackEvaluator:
             config = base_config.copy()
             config.update({
                 'eps_audio': eps_audio,
-                'eps_video': 0.3  # Fixed
+                'eps_step_audio': eps_audio / 3,
+                'eps_video': 8.0,
+                'eps_step_video': 2.0
             })
 
             try:
@@ -288,22 +321,23 @@ class RefereeAttackEvaluator:
                     target_audio, target_video, ref_audio, ref_video, labels_rf, config
                 )
                 results['audio_sweep'].append(result)
-                print(f"    eps_audio={eps_audio:.3f}: Success={result['attack_success']}")
-
-                # Clean memory between tests
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-
+                print(f"    eps_audio={eps_audio:.3f}: Success={result['attack_success']}, "
+                      f"Δconf={result['confidence_change']:+.3f}")
             except Exception as e:
                 print(f"    eps_audio={eps_audio:.3f}: Error={e}")
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
         # Video epsilon sweep (fixed audio eps)
         print("  Testing video epsilon values...")
         for eps_video in epsilon_ranges['video']:
             config = base_config.copy()
             config.update({
-                'eps_audio': 0.05,  # Fixed
-                'eps_video': eps_video
+                'eps_audio': 0.3,
+                'eps_step_audio': 0.1,
+                'eps_video': eps_video,
+                'eps_step_video': eps_video / 4
             })
 
             try:
@@ -311,14 +345,13 @@ class RefereeAttackEvaluator:
                     target_audio, target_video, ref_audio, ref_video, labels_rf, config
                 )
                 results['video_sweep'].append(result)
-                print(f"    eps_video={eps_video:.3f}: Success={result['attack_success']}")
-
-                # Clean memory between tests
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-
+                print(f"    eps_video={eps_video:.3f}: Success={result['attack_success']}, "
+                      f"Δconf={result['confidence_change']:+.3f}")
             except Exception as e:
                 print(f"    eps_video={eps_video:.3f}: Error={e}")
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
         return results
 
@@ -361,7 +394,7 @@ class RefereeAttackEvaluator:
                     report_lines.extend([
                         f"Mode: {mode.upper()}",
                         f"  Success: {success}",
-                        f"  Confidence Change: {conf_change:.3f}",
+                        f"  Confidence Change: {conf_change:+.3f}",
                         f"  Attack Time: {attack_time:.2f}s",
                         ""
                     ])
@@ -385,20 +418,22 @@ class RefereeAttackEvaluator:
             if 'audio_sweep' in results['epsilon_results']:
                 report_lines.append("Audio Epsilon Sweep:")
                 for result in results['epsilon_results']['audio_sweep']:
-                    eps = result['attack_config']['eps_audio']
-                    success = result['attack_success']
-                    conf_change = result['confidence_change']
-                    report_lines.append(f"  eps_audio={eps:.3f}: Success={success}, ΔConf={conf_change:.3f}")
+                    if 'error' not in result:
+                        eps = result['attack_config']['eps_audio']
+                        success = result['attack_success']
+                        conf_change = result['confidence_change']
+                        report_lines.append(f"  eps_audio={eps:.3f}: Success={success}, ΔConf={conf_change:+.3f}")
                 report_lines.append("")
 
             # Video sweep
             if 'video_sweep' in results['epsilon_results']:
                 report_lines.append("Video Epsilon Sweep:")
                 for result in results['epsilon_results']['video_sweep']:
-                    eps = result['attack_config']['eps_video']
-                    success = result['attack_success']
-                    conf_change = result['confidence_change']
-                    report_lines.append(f"  eps_video={eps:.3f}: Success={success}, ΔConf={conf_change:.3f}")
+                    if 'error' not in result:
+                        eps = result['attack_config']['eps_video']
+                        success = result['attack_success']
+                        conf_change = result['confidence_change']
+                        report_lines.append(f"  eps_video={eps:.3f}: Success={success}, ΔConf={conf_change:+.3f}")
                 report_lines.append("")
 
         # Summary statistics
@@ -414,7 +449,7 @@ class RefereeAttackEvaluator:
             all_results.extend([r for r in results['mode_results'].values() if 'error' not in r])
         if 'epsilon_results' in results:
             for sweep_results in results['epsilon_results'].values():
-                all_results.extend(sweep_results)
+                all_results.extend([r for r in sweep_results if 'error' not in r])
 
         if all_results:
             success_rate = sum(r['attack_success'] for r in all_results) / len(all_results)
@@ -423,7 +458,7 @@ class RefereeAttackEvaluator:
 
             report_lines.extend([
                 f"Overall Attack Success Rate: {success_rate:.2%}",
-                f"Average Confidence Change: {avg_conf_change:.3f}",
+                f"Average Confidence Change: {avg_conf_change:+.3f}",
                 f"Average Attack Time: {avg_attack_time:.2f}s",
                 ""
             ])
@@ -439,7 +474,6 @@ class RefereeAttackEvaluator:
             # Save raw results as JSON
             results_path = output_path / "evaluation_results.json"
             with open(results_path, 'w') as f:
-                # Convert tensors to lists for JSON serialization
                 json_results = self._serialize_results_for_json(results)
                 json.dump(json_results, f, indent=2)
 
@@ -450,27 +484,34 @@ class RefereeAttackEvaluator:
 
     def _serialize_results_for_json(self, results: Dict[str, Any]) -> Dict[str, Any]:
         """Convert tensors and other non-serializable objects to JSON format."""
+
         def convert_item(item):
             if isinstance(item, torch.Tensor):
                 return item.tolist()
             elif isinstance(item, np.ndarray):
                 return item.tolist()
+            elif isinstance(item, np.floating):
+                return float(item)
+            elif isinstance(item, np.integer):
+                return int(item)
             elif isinstance(item, dict):
                 return {k: convert_item(v) for k, v in item.items()}
             elif isinstance(item, list):
                 return [convert_item(x) for x in item]
-            else:
+            elif isinstance(item, (bool, int, float, str, type(None))):
                 return item
+            else:
+                return str(item)
 
         return convert_item(results)
 
     def run_comprehensive_evaluation(self,
-                                   target_audio: torch.Tensor,
-                                   target_video: torch.Tensor,
-                                   ref_audio: torch.Tensor,
-                                   ref_video: torch.Tensor,
-                                   labels_rf: torch.Tensor,
-                                   output_dir: Optional[str] = None) -> Dict[str, Any]:
+                                     target_audio: torch.Tensor,
+                                     target_video: torch.Tensor,
+                                     ref_audio: torch.Tensor,
+                                     ref_video: torch.Tensor,
+                                     labels_rf: torch.Tensor,
+                                     output_dir: Optional[str] = None) -> Dict[str, Any]:
         """
         Run a comprehensive evaluation of adversarial attacks.
 

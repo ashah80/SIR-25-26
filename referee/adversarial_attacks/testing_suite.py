@@ -160,7 +160,7 @@ class RefereeAttackTester:
                 'exception_occurred': True
             }
 
-    def test_attack_bounds(self, eps_audio: float = 0.05, eps_video: float = 0.3) -> Dict[str, bool]:
+    def test_attack_bounds(self, eps_audio: float = 0.3, eps_video: float = 8.0) -> Dict[str, bool]:
         """
         Test that adversarial perturbations respect epsilon bounds.
 
@@ -180,6 +180,8 @@ class RefereeAttackTester:
             self.referee_model,
             eps_audio=eps_audio,
             eps_video=eps_video,
+            eps_step_audio=eps_audio / 3,
+            eps_step_video=eps_video / 4,
             max_iter=10,  # Short test
             verbose=False
         )
@@ -303,7 +305,7 @@ class RefereeAttackTester:
         """
         print("🧪 Testing model compatibility...")
 
-        target_audio, target_video, ref_audio, ref_video, labels_rf = self.create_dummy_batch(2)
+        target_audio, target_video, ref_audio, ref_video, labels_rf = self.create_dummy_batch(1)
 
         # Run attack
         attacker = RefereeMultiModalPGD(
@@ -357,6 +359,13 @@ class RefereeAttackTester:
             print(f"  {status} {test_name}: {passed}")
 
         print(f"  Compatibility test: {'PASSED' if all(results.values()) else 'FAILED'}")
+
+        # Clean up memory
+        del target_audio, target_video, ref_audio, ref_video, labels_rf
+        del adv_audio, adv_video, attacker
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         return results
 
     def test_attack_modes(self) -> Dict[str, Dict[str, bool]]:
@@ -420,6 +429,15 @@ class RefereeAttackTester:
             for test_name, passed in mode_results.items():
                 status = "✓" if passed else "✗"
                 print(f"    {status} {test_name}: {passed}")
+
+            # Clean up memory after each mode test
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+        # Final cleanup
+        del target_audio, target_video, ref_audio, ref_video, labels_rf
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
         return modes_results
 

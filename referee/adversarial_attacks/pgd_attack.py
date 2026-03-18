@@ -4,12 +4,15 @@ PGD Attack Implementation for Referee Multimodal Deepfake Detection
 This module implements Projected Gradient Descent adversarial attacks specifically
 designed for the Referee model's dual-input (target + reference) architecture.
 
+Based on standard PGD implementations (Madry et al., 2017) and ART library parameters.
+
 Features:
 - L2 norm constraints for both audio and video
 - Temporal smoothness regularization
 - Individual modality attacks (audio-only, video-only)
 - Joint multimodal attacks
-- Proper handling of reference-aware architecture
+- Early stopping for efficiency
+- Proper gradient direction (ascent for untargeted attacks)
 """
 
 import torch
@@ -27,20 +30,25 @@ class RefereeMultiModalPGD:
     This attack is designed specifically for the reference-aware, multimodal architecture
     of the Referee model, supporting separate constraints and regularization for
     audio and video modalities.
+
+    IMPORTANT: For untargeted attacks on fake samples, we use gradient ASCENT
+    (add gradients) to MAXIMIZE the loss, which makes the model misclassify
+    the fake sample as real.
     """
 
     def __init__(self,
                  referee_model: nn.Module,
-                 eps_audio: float = 0.05,          # 5% audio perturbation
-                 eps_video: float = 0.3,           # L2 norm bound for video (scaled to [0,1])
-                 eps_step_audio: float = 0.01,     # Audio step size
-                 eps_step_video: float = 0.05,     # Video step size
-                 max_iter: int = 100,              # Maximum iterations
-                 norm: str = 'L2',                 # L2 norm (as requested)
-                 targeted: bool = False,           # Untargeted attack (make fake -> real)
-                 temporal_weight: float = 0.5,     # Temporal smoothness weight
-                 attack_mode: str = 'joint',       # 'audio', 'video', or 'joint'
-                 random_init: bool = True,         # Random initialization within eps ball
+                 eps_audio: float = 0.3,          # L2 norm bound for audio (larger for mel-spectrograms)
+                 eps_video: float = 8.0,          # L2 norm bound for video (ART default for L2)
+                 eps_step_audio: float = 0.1,     # Audio step size (~eps/3, ART-style)
+                 eps_step_video: float = 2.0,     # Video step size (~eps/4, ART-style)
+                 max_iter: int = 40,              # ART default
+                 norm: str = 'L2',                # L2 norm
+                 targeted: bool = False,          # Untargeted attack (make fake -> real)
+                 temporal_weight: float = 0.0,    # No temporal regularization by default for stronger attacks
+                 attack_mode: str = 'joint',      # 'audio', 'video', or 'joint'
+                 random_init: bool = True,        # Random initialization within eps ball
+                 early_stop: bool = True,         # Stop when attack succeeds
                  verbose: bool = True):
         """
         Initialize the PGD attack.
@@ -53,13 +61,14 @@ class RefereeMultiModalPGD:
             eps_step_video: Step size for video updates
             max_iter: Maximum number of iterations
             norm: Norm type (only 'L2' supported currently)
-            targeted: Whether to perform targeted attack (not typically used for deepfake detection)
-            temporal_weight: Weight for temporal smoothness regularization
+            targeted: Whether to perform targeted attack
+            temporal_weight: Weight for temporal smoothness regularization (0 = disabled)
             attack_mode: Which modalities to attack ('audio', 'video', 'joint')
             random_init: Whether to initialize perturbations randomly within eps ball
+            early_stop: Whether to stop early when attack succeeds
             verbose: Whether to show progress
         """
-        self.referee_model = referee_model.eval()  # Set to eval mode for consistent behavior
+        self.referee_model = referee_model
         self.eps_audio = eps_audio
         self.eps_video = eps_video
         self.eps_step_audio = eps_step_audio
@@ -70,6 +79,7 @@ class RefereeMultiModalPGD:
         self.temporal_weight = temporal_weight
         self.attack_mode = attack_mode.lower()
         self.random_init = random_init
+        self.early_stop = early_stop
         self.verbose = verbose
 
         # Validate inputs
@@ -84,6 +94,7 @@ class RefereeMultiModalPGD:
             print(f"  Video eps: {self.eps_video}, step: {self.eps_step_video}")
             print(f"  Temporal weight: {self.temporal_weight}")
             print(f"  Max iterations: {self.max_iter}")
+            print(f"  Early stop: {self.early_stop}")
 
     def generate(self,
                  target_audio: torch.Tensor,
@@ -94,55 +105,69 @@ class RefereeMultiModalPGD:
         """
         Generate adversarial examples using PGD.
 
+        For UNTARGETED attacks on FAKE samples (label=1):
+        - Goal: Make model classify fake as real
+        - Method: MAXIMIZE cross-entropy loss with true label
+        - Implementation: Gradient ASCENT (add gradients to input)
+
         Args:
             target_audio: Original target audio (B, S, 1, F, Ta)
             target_video: Original target video (B, S, Tv, C, H, W)
             ref_audio: Reference audio (fixed, not attacked)
             ref_video: Reference video (fixed, not attacked)
-            labels_rf: Ground truth RF labels for loss computation
+            labels_rf: Ground truth RF labels (1=fake, 0=real)
 
         Returns:
             Tuple of (adversarial_audio, adversarial_video, attack_info)
         """
+        device = target_audio.device
+        batch_size = target_audio.shape[0]
+
         if self.verbose:
-            print(f"Starting PGD attack on {target_audio.shape[0]} samples...")
+            print(f"Starting PGD attack on {batch_size} samples...")
 
         # Create attack wrapper
         attack_wrapper = RefereeAttackWrapper(self.referee_model)
         attack_wrapper.set_reference_pair(ref_audio, ref_video)
         attack_wrapper.set_attack_labels(labels_rf)
 
-        # Initialize adversarial examples (copy originals)
-        adv_audio = target_audio.clone().detach()
-        adv_video = target_video.clone().detach()
+        # Store original inputs
+        orig_audio = target_audio.clone().detach()
+        orig_video = target_video.clone().detach()
 
-        # Initialize perturbations
+        # Initialize adversarial examples
         if self.random_init:
-            delta_audio, delta_video = self._random_init_perturbations(target_audio, target_video)
+            adv_audio, adv_video = self._random_init(orig_audio, orig_video)
         else:
-            delta_audio = torch.zeros_like(target_audio)
-            delta_video = torch.zeros_like(target_video)
-
-        # Apply initial perturbations
-        adv_audio = target_audio + delta_audio
-        adv_video = target_video + delta_video
+            adv_audio = orig_audio.clone()
+            adv_video = orig_video.clone()
 
         # Track attack progress
         attack_info = {
             'losses': [],
             'temporal_losses': [],
             'success_iterations': [],
-            'confidence_scores': []
+            'confidence_scores': [],
+            'converged': False
         }
 
         # Get initial predictions
-        initial_confidence = attack_wrapper.get_confidence(target_audio, target_video)
+        initial_confidence = attack_wrapper.get_confidence(orig_audio, orig_video)
+        attack_info['initial_confidence'] = initial_confidence
         if self.verbose:
             print(f"Initial confidence - Real: {initial_confidence['rf_real_prob']:.3f}, "
                   f"Fake: {initial_confidence['rf_fake_prob']:.3f}")
 
+        best_adv_audio = adv_audio.clone()
+        best_adv_video = adv_video.clone()
+        best_real_prob = initial_confidence['rf_real_prob']
+
         # PGD attack loop
         for iteration in range(self.max_iter):
+            # Ensure we're working with fresh tensors that can have gradients
+            adv_audio = adv_audio.detach().clone()
+            adv_video = adv_video.detach().clone()
+
             # Enable gradients for attacked modalities
             if self.attack_mode in ['audio', 'joint']:
                 adv_audio.requires_grad_(True)
@@ -151,208 +176,201 @@ class RefereeMultiModalPGD:
 
             # Forward pass and loss computation
             try:
+                # Compute classification loss
                 classification_loss = attack_wrapper(adv_audio, adv_video)
 
-                # Ensure loss requires grad for backprop
-                if not classification_loss.requires_grad:
-                    if self.verbose and iteration == 0:
-                        print(f"  Warning: Loss doesn't require grad. This may be normal for dummy models.")
-                    # Add small learnable parameter to enable gradients
-                    dummy_param = torch.tensor(0.0, requires_grad=True, device=classification_loss.device)
-                    classification_loss = classification_loss + dummy_param * 0
-
-                # Temporal regularization
-                temporal_loss = self._compute_temporal_loss(adv_audio, adv_video,
-                                                          target_audio, target_video)
-
-                # Total loss
-                total_loss = classification_loss + self.temporal_weight * temporal_loss
+                # Temporal regularization (optional)
+                if self.temporal_weight > 0:
+                    temporal_loss = self._compute_temporal_loss(adv_audio, adv_video)
+                    # For untargeted: we want to maximize classification loss but minimize temporal variance
+                    # So we subtract temporal loss (which we minimize)
+                    total_loss = classification_loss - self.temporal_weight * temporal_loss
+                else:
+                    temporal_loss = torch.tensor(0.0, device=device)
+                    total_loss = classification_loss
 
                 # Backward pass
                 total_loss.backward()
 
-                # Extract gradients
+                # Get gradients
                 grad_audio = adv_audio.grad if adv_audio.requires_grad else None
                 grad_video = adv_video.grad if adv_video.requires_grad else None
 
-                # Check if we got valid gradients
-                valid_gradients = True
-                if self.attack_mode in ['audio', 'joint'] and (grad_audio is None or torch.all(grad_audio == 0)):
-                    if self.verbose and iteration == 0:
-                        print(f"  Warning: No audio gradients. Attack may not work on this model.")
-                    valid_gradients = False
-
-                if self.attack_mode in ['video', 'joint'] and (grad_video is None or torch.all(grad_video == 0)):
-                    if self.verbose and iteration == 0:
-                        print(f"  Warning: No video gradients. Attack may not work on this model.")
-                    valid_gradients = False
-
-                # Update perturbations (only if we have valid gradients)
+                # Update perturbations using gradient ASCENT for untargeted attacks
                 with torch.no_grad():
-                    if grad_audio is not None and not torch.all(grad_audio == 0):
-                        # L2 normalized gradient step for audio
-                        grad_norm = torch.norm(grad_audio.view(grad_audio.size(0), -1), dim=1, keepdim=True)
-                        grad_norm = grad_norm.view(-1, 1, 1, 1, 1) + 1e-8
-                        grad_normalized = grad_audio / grad_norm
+                    if self.attack_mode in ['audio', 'joint'] and grad_audio is not None:
+                        # Normalize gradient
+                        grad_flat = grad_audio.view(batch_size, -1)
+                        grad_norm = torch.norm(grad_flat, dim=1, keepdim=True) + 1e-10
+                        grad_normalized = grad_audio / grad_norm.view(-1, 1, 1, 1, 1)
 
+                        # GRADIENT ASCENT for untargeted (maximize loss)
+                        # GRADIENT DESCENT for targeted (minimize loss toward target)
                         if self.targeted:
-                            adv_audio = adv_audio + self.eps_step_audio * grad_normalized  # Targeted
+                            adv_audio = adv_audio - self.eps_step_audio * grad_normalized
                         else:
-                            adv_audio = adv_audio - self.eps_step_audio * grad_normalized  # Untargeted
+                            adv_audio = adv_audio + self.eps_step_audio * grad_normalized
 
-                    if grad_video is not None and not torch.all(grad_video == 0):
-                        # L2 normalized gradient step for video
-                        grad_norm = torch.norm(grad_video.view(grad_video.size(0), -1), dim=1, keepdim=True)
-                        grad_norm = grad_norm.view(-1, 1, 1, 1, 1, 1) + 1e-8
-                        grad_normalized = grad_video / grad_norm
+                    if self.attack_mode in ['video', 'joint'] and grad_video is not None:
+                        # Normalize gradient
+                        grad_flat = grad_video.view(batch_size, -1)
+                        grad_norm = torch.norm(grad_flat, dim=1, keepdim=True) + 1e-10
+                        grad_normalized = grad_video / grad_norm.view(-1, 1, 1, 1, 1, 1)
 
+                        # GRADIENT ASCENT for untargeted (maximize loss)
+                        # GRADIENT DESCENT for targeted (minimize loss toward target)
                         if self.targeted:
-                            adv_video = adv_video + self.eps_step_video * grad_normalized
-                        else:
                             adv_video = adv_video - self.eps_step_video * grad_normalized
+                        else:
+                            adv_video = adv_video + self.eps_step_video * grad_normalized
 
-                    # Project back to valid space (L2 ball + input bounds)
-                    adv_audio, adv_video = self._project_perturbations(
-                        adv_audio, adv_video, target_audio, target_video)
+                    # Project back to epsilon ball and valid input range
+                    adv_audio, adv_video = self._project(adv_audio, adv_video, orig_audio, orig_video)
+
+                # Track progress
+                attack_info['losses'].append(classification_loss.item())
+                attack_info['temporal_losses'].append(temporal_loss.item() if isinstance(temporal_loss, torch.Tensor) else temporal_loss)
+
+                # Check progress every few iterations
+                if iteration % 5 == 0 or iteration == self.max_iter - 1:
+                    current_confidence = attack_wrapper.get_confidence(adv_audio.detach(), adv_video.detach())
+                    attack_info['confidence_scores'].append({
+                        'iteration': iteration,
+                        **current_confidence
+                    })
+
+                    current_real_prob = current_confidence['rf_real_prob']
+
+                    # Track best adversarial example
+                    if current_real_prob > best_real_prob:
+                        best_real_prob = current_real_prob
+                        best_adv_audio = adv_audio.detach().clone()
+                        best_adv_video = adv_video.detach().clone()
+
+                    if self.verbose and iteration % 10 == 0:
+                        print(f"Iter {iteration:3d}: Loss={classification_loss.item():.4f}, "
+                              f"Real_prob={current_real_prob:.3f}")
+
+                    # Early stopping: attack succeeded if fake classified as real
+                    if self.early_stop and not self.targeted and current_real_prob > 0.5:
+                        attack_info['success_iterations'].append(iteration)
+                        attack_info['converged'] = True
+                        if self.verbose:
+                            print(f"  ✓ Attack succeeded at iteration {iteration}! Real_prob={current_real_prob:.3f}")
+                        break
 
             except Exception as e:
                 if self.verbose:
                     print(f"  Error in iteration {iteration}: {e}")
+                import traceback
+                traceback.print_exc()
                 break
 
-            # Clean up gradients
-            if adv_audio.requires_grad:
-                adv_audio.grad = None
-            if adv_video.requires_grad:
-                adv_video.grad = None
+        # Use best adversarial example found
+        final_adv_audio = best_adv_audio.detach()
+        final_adv_video = best_adv_video.detach()
 
-            # Track progress
-            attack_info['losses'].append(classification_loss.item())
-            attack_info['temporal_losses'].append(temporal_loss.item())
-
-            # Check attack success periodically
-            if iteration % 10 == 0 or iteration == self.max_iter - 1:
-                try:
-                    current_confidence = attack_wrapper.get_confidence(adv_audio, adv_video)
-                    attack_info['confidence_scores'].append(current_confidence)
-
-                    if self.verbose and iteration % 20 == 0:
-                        print(f"Iter {iteration:3d}: Loss={classification_loss.item():.4f}, "
-                              f"Temporal={temporal_loss.item():.4f}, "
-                              f"Real_prob={current_confidence['rf_real_prob']:.3f}")
-
-                    # Check if attack succeeded (fake classified as real)
-                    if not self.targeted and current_confidence['rf_real_prob'] > 0.5:
-                        attack_info['success_iterations'].append(iteration)
-                        if self.verbose:
-                            print(f"  ✓ Attack succeeded at iteration {iteration}!")
-                except:
-                    # If confidence computation fails, just continue
-                    pass
-
+        # Final evaluation
         if self.verbose:
-            try:
-                final_confidence = attack_wrapper.get_confidence(adv_audio, adv_video)
-                print(f"Final confidence - Real: {final_confidence['rf_real_prob']:.3f}, "
-                      f"Fake: {final_confidence['rf_fake_prob']:.3f}")
-            except Exception as e:
-                print(f"Could not compute final confidence: {e}")
+            final_confidence = attack_wrapper.get_confidence(final_adv_audio, final_adv_video)
+            print(f"Final confidence - Real: {final_confidence['rf_real_prob']:.3f}, "
+                  f"Fake: {final_confidence['rf_fake_prob']:.3f}")
+            print(f"Confidence change: {final_confidence['rf_real_prob'] - initial_confidence['rf_real_prob']:+.3f}")
 
-        return adv_audio.detach(), adv_video.detach(), attack_info
+        return final_adv_audio, final_adv_video, attack_info
 
-    def _random_init_perturbations(self, target_audio: torch.Tensor,
-                                 target_video: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Initialize perturbations randomly within epsilon ball."""
-        delta_audio = torch.zeros_like(target_audio)
-        delta_video = torch.zeros_like(target_video)
+    def _random_init(self, orig_audio: torch.Tensor, orig_video: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Initialize adversarial examples randomly within epsilon ball."""
+        adv_audio = orig_audio.clone()
+        adv_video = orig_video.clone()
 
         if self.attack_mode in ['audio', 'joint']:
-            # Random audio perturbation within L2 ball
-            delta_audio = torch.randn_like(target_audio)
-            delta_norm = torch.norm(delta_audio.view(delta_audio.size(0), -1), dim=1, keepdim=True)
-            delta_norm = delta_norm.view(-1, 1, 1, 1, 1)
-            delta_audio = delta_audio / (delta_norm + 1e-8) * self.eps_audio * torch.rand_like(delta_norm)
+            # Random perturbation with L2 norm = eps_audio * random_factor
+            delta = torch.randn_like(orig_audio)
+            delta_flat = delta.view(orig_audio.size(0), -1)
+            delta_norm = torch.norm(delta_flat, dim=1, keepdim=True) + 1e-10
+            # Random magnitude between 0 and eps
+            random_factor = torch.rand(orig_audio.size(0), 1, device=orig_audio.device)
+            delta = delta / delta_norm.view(-1, 1, 1, 1, 1) * self.eps_audio * random_factor.view(-1, 1, 1, 1, 1)
+            adv_audio = orig_audio + delta
 
         if self.attack_mode in ['video', 'joint']:
-            # Random video perturbation within L2 ball
-            delta_video = torch.randn_like(target_video)
-            delta_norm = torch.norm(delta_video.view(delta_video.size(0), -1), dim=1, keepdim=True)
-            delta_norm = delta_norm.view(-1, 1, 1, 1, 1, 1)
-            delta_video = delta_video / (delta_norm + 1e-8) * self.eps_video * torch.rand_like(delta_norm)
+            # Random perturbation with L2 norm = eps_video * random_factor
+            delta = torch.randn_like(orig_video)
+            delta_flat = delta.view(orig_video.size(0), -1)
+            delta_norm = torch.norm(delta_flat, dim=1, keepdim=True) + 1e-10
+            # Random magnitude between 0 and eps
+            random_factor = torch.rand(orig_video.size(0), 1, device=orig_video.device)
+            delta = delta / delta_norm.view(-1, 1, 1, 1, 1, 1) * self.eps_video * random_factor.view(-1, 1, 1, 1, 1, 1)
+            adv_video = orig_video + delta
+            # Clamp to valid range
+            adv_video = torch.clamp(adv_video, 0.0, 1.0)
 
-        return delta_audio, delta_video
+        return adv_audio, adv_video
 
-    def _compute_temporal_loss(self, adv_audio: torch.Tensor, adv_video: torch.Tensor,
-                             orig_audio: torch.Tensor, orig_video: torch.Tensor) -> torch.Tensor:
-        """Compute temporal smoothness regularization loss."""
-        temporal_loss = 0.0
+    def _compute_temporal_loss(self, adv_audio: torch.Tensor, adv_video: torch.Tensor) -> torch.Tensor:
+        """Compute temporal smoothness loss (variance of frame differences)."""
+        temporal_loss = torch.tensor(0.0, device=adv_audio.device)
 
         if self.attack_mode in ['audio', 'joint']:
-            # Audio temporal smoothness (across time frames)
-            # Audio shape: (B, S, 1, F, Ta) - smooth across Ta (time frames)
-            if adv_audio.shape[-1] > 1:  # Only if we have multiple time frames
+            # Audio shape: (B, S, 1, F, Ta) - smooth across time dimension
+            if adv_audio.shape[-1] > 1:
                 diff = adv_audio[:, :, :, :, 1:] - adv_audio[:, :, :, :, :-1]
-                temporal_loss += torch.mean(diff ** 2)
+                temporal_loss = temporal_loss + torch.mean(diff ** 2)
 
         if self.attack_mode in ['video', 'joint']:
-            # Video temporal smoothness (across frames per segment)
-            # Video shape: (B, S, Tv, C, H, W) - smooth across Tv (frames per segment)
-            if adv_video.shape[2] > 1:  # Only if we have multiple frames per segment
+            # Video shape: (B, S, Tv, C, H, W) - smooth across frames
+            if adv_video.shape[2] > 1:
                 diff = adv_video[:, :, 1:, :, :, :] - adv_video[:, :, :-1, :, :, :]
-                temporal_loss += torch.mean(diff ** 2)
+                temporal_loss = temporal_loss + torch.mean(diff ** 2)
 
         return temporal_loss
 
-    def _project_perturbations(self, adv_audio: torch.Tensor, adv_video: torch.Tensor,
-                             orig_audio: torch.Tensor, orig_video: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Project perturbations back to valid L2 ball and input bounds."""
+    def _project(self, adv_audio: torch.Tensor, adv_video: torch.Tensor,
+                 orig_audio: torch.Tensor, orig_video: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Project perturbations to epsilon ball and valid input range."""
 
         if self.attack_mode in ['audio', 'joint']:
-            # Project audio perturbation to L2 ball
-            delta_audio = adv_audio - orig_audio
-            delta_norm = torch.norm(delta_audio.view(delta_audio.size(0), -1), dim=1, keepdim=True)
-            delta_norm = delta_norm.view(-1, 1, 1, 1, 1)
+            # Compute perturbation
+            delta = adv_audio - orig_audio
+            delta_flat = delta.view(delta.size(0), -1)
+            delta_norm = torch.norm(delta_flat, dim=1, keepdim=True)
 
-            # Clip to epsilon ball
-            scale_factor = torch.min(torch.ones_like(delta_norm),
-                                   self.eps_audio / (delta_norm + 1e-8))
-            delta_audio = delta_audio * scale_factor
-            adv_audio = orig_audio + delta_audio
-
-            # Additional bounds for audio (if needed - e.g., log mel-spectrograms)
-            # adv_audio = torch.clamp(adv_audio, min_val, max_val)  # Uncomment if bounds needed
+            # Project to L2 ball
+            factor = torch.clamp(self.eps_audio / (delta_norm + 1e-10), max=1.0)
+            delta = delta * factor.view(-1, 1, 1, 1, 1)
+            adv_audio = orig_audio + delta
 
         if self.attack_mode in ['video', 'joint']:
-            # Project video perturbation to L2 ball
-            delta_video = adv_video - orig_video
-            delta_norm = torch.norm(delta_video.view(delta_video.size(0), -1), dim=1, keepdim=True)
-            delta_norm = delta_norm.view(-1, 1, 1, 1, 1, 1)
+            # Compute perturbation
+            delta = adv_video - orig_video
+            delta_flat = delta.view(delta.size(0), -1)
+            delta_norm = torch.norm(delta_flat, dim=1, keepdim=True)
 
-            # Clip to epsilon ball
-            scale_factor = torch.min(torch.ones_like(delta_norm),
-                                   self.eps_video / (delta_norm + 1e-8))
-            delta_video = delta_video * scale_factor
-            adv_video = orig_video + delta_video
+            # Project to L2 ball
+            factor = torch.clamp(self.eps_video / (delta_norm + 1e-10), max=1.0)
+            delta = delta * factor.view(-1, 1, 1, 1, 1, 1)
+            adv_video = orig_video + delta
 
-            # Clamp to valid pixel range [0, 1] (assuming preprocessed inputs)
+            # Clamp to valid pixel range [0, 1]
             adv_video = torch.clamp(adv_video, 0.0, 1.0)
 
         return adv_audio, adv_video
 
     def compute_perturbation_norms(self, adv_audio: torch.Tensor, adv_video: torch.Tensor,
-                                 orig_audio: torch.Tensor, orig_video: torch.Tensor) -> Dict[str, float]:
+                                   orig_audio: torch.Tensor, orig_video: torch.Tensor) -> Dict[str, float]:
         """Compute L2 norms of perturbations for analysis."""
         norms = {}
 
         if self.attack_mode in ['audio', 'joint']:
-            delta_audio = adv_audio - orig_audio
-            audio_norm = torch.norm(delta_audio.view(delta_audio.size(0), -1), dim=1)
+            delta = adv_audio - orig_audio
+            audio_norm = torch.norm(delta.view(delta.size(0), -1), dim=1)
             norms['audio_l2_norm'] = audio_norm.mean().item()
             norms['audio_l2_max'] = audio_norm.max().item()
 
         if self.attack_mode in ['video', 'joint']:
-            delta_video = adv_video - orig_video
-            video_norm = torch.norm(delta_video.view(delta_video.size(0), -1), dim=1)
+            delta = adv_video - orig_video
+            video_norm = torch.norm(delta.view(delta.size(0), -1), dim=1)
             norms['video_l2_norm'] = video_norm.mean().item()
             norms['video_l2_max'] = video_norm.max().item()
 

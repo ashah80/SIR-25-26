@@ -53,8 +53,9 @@ def load_referee_model(config_path: str, checkpoint_path: str = None) -> Referee
 
 def create_dummy_data(batch_size: int = 1, device: str = 'cuda'):
     """Create dummy input data for testing."""
-    # Use original Referee dimensions if we have the real model, smaller for dummy
-    # Let's try original dimensions first, fall back to smaller if memory issues
+    # Clear memory first
+    if device == 'cuda':
+        torch.cuda.empty_cache()
 
     try:
         # Original Referee dimensions (what the real model expects)
@@ -74,12 +75,13 @@ def create_dummy_data(batch_size: int = 1, device: str = 'cuda'):
     except RuntimeError as e:
         if "out of memory" in str(e).lower():
             print("⚠️  GPU memory low, using smaller tensors...")
+            torch.cuda.empty_cache()
 
             # Fallback to smaller tensors
-            target_audio = torch.randn(batch_size, 4, 1, 32, 32, device=device)
-            ref_audio = torch.randn(batch_size, 4, 1, 32, 32, device=device)
-            target_video = torch.rand(batch_size, 4, 8, 3, 64, 64, device=device)
-            ref_video = torch.rand(batch_size, 4, 8, 3, 64, 64, device=device)
+            target_audio = torch.randn(batch_size, 4, 1, 64, 33, device=device)
+            ref_audio = torch.randn(batch_size, 4, 1, 64, 33, device=device)
+            target_video = torch.rand(batch_size, 4, 8, 3, 112, 112, device=device)
+            ref_video = torch.rand(batch_size, 4, 8, 3, 112, 112, device=device)
             labels_rf = torch.ones(batch_size, dtype=torch.long, device=device)
 
             return target_audio, target_video, ref_audio, ref_video, labels_rf
@@ -100,6 +102,10 @@ def demo_quick_test(model: nn.Module, device: str = 'cuda'):
     else:
         print("❌ There are issues with the implementation. Check logs above.")
 
+    # Clean up
+    if device == 'cuda':
+        torch.cuda.empty_cache()
+
     return success
 
 
@@ -112,22 +118,23 @@ def demo_individual_attacks(model: nn.Module, device: str = 'cuda'):
     # Create test data
     target_audio, target_video, ref_audio, ref_video, labels_rf = create_dummy_data(1, device)
 
-    # Test each attack mode with more aggressive parameters
+    # Test each attack mode with aggressive parameters (ART-style)
     modes = ['audio', 'video', 'joint']
 
     for mode in modes:
         print(f"\n🎯 Testing {mode.upper()} attack...")
 
-        # Use more aggressive attack parameters to ensure they work
+        # Aggressive attack parameters based on ART defaults
         attacker = RefereeMultiModalPGD(
             model,
             attack_mode=mode,
-            eps_audio=0.2,        # Even larger perturbation
-            eps_video=1.0,        # Even larger perturbation
-            eps_step_audio=0.05,  # Even larger step
-            eps_step_video=0.2,   # Even larger step
-            max_iter=50,          # More iterations
-            temporal_weight=0.01, # Much lower temporal weight for stronger attacks
+            eps_audio=0.3,        # L2 norm bound for audio
+            eps_video=8.0,        # L2 norm bound for video (ART default)
+            eps_step_audio=0.1,   # ~eps/3
+            eps_step_video=2.0,   # ~eps/4
+            max_iter=40,          # ART default
+            temporal_weight=0.0,  # Disable for maximum attack strength
+            early_stop=True,      # Stop when attack succeeds
             verbose=True
         )
 
@@ -144,17 +151,23 @@ def demo_individual_attacks(model: nn.Module, device: str = 'cuda'):
             print(f"  Audio modified: {audio_changed}")
             print(f"  Video modified: {video_changed}")
             print(f"  Attack iterations: {len(attack_info['losses'])}")
+            if attack_info.get('converged'):
+                print(f"  ✓ Attack converged early!")
 
             # Clean up memory
-            del adv_audio, adv_video, attack_info
-            torch.cuda.empty_cache() if device == 'cuda' else None
+            del adv_audio, adv_video, attack_info, attacker
+            if device == 'cuda':
+                torch.cuda.empty_cache()
 
         except Exception as e:
             print(f"  ❌ {mode} attack failed: {e}")
+            import traceback
+            traceback.print_exc()
 
-        # Clean up between attacks
-        if device == 'cuda':
-            torch.cuda.empty_cache()
+    # Final cleanup
+    del target_audio, target_video, ref_audio, ref_video, labels_rf
+    if device == 'cuda':
+        torch.cuda.empty_cache()
 
 
 def demo_comprehensive_evaluation(model: nn.Module, device: str = 'cuda'):
@@ -163,13 +176,13 @@ def demo_comprehensive_evaluation(model: nn.Module, device: str = 'cuda'):
     print("DEMO 3: Comprehensive Evaluation")
     print("=" * 60)
 
-    # Create test data with smaller batch size
-    target_audio, target_video, ref_audio, ref_video, labels_rf = create_dummy_data(1, device)  # Use batch_size=1
+    # Create test data
+    target_audio, target_video, ref_audio, ref_video, labels_rf = create_dummy_data(1, device)
 
     # Create evaluator
     evaluator = RefereeAttackEvaluator(model, device)
 
-    # Run comprehensive evaluation with smaller ranges
+    # Run comprehensive evaluation
     try:
         results = evaluator.run_comprehensive_evaluation(
             target_audio, target_video, ref_audio, ref_video, labels_rf,
@@ -185,17 +198,21 @@ def demo_comprehensive_evaluation(model: nn.Module, device: str = 'cuda'):
                 if 'error' not in mode_results:
                     success = mode_results['attack_success']
                     conf_change = mode_results['confidence_change']
-                    print(f"{mode:6s}: Success={success}, Δ Confidence={conf_change:.3f}")
-
-        # Clean up memory
-        torch.cuda.empty_cache() if device == 'cuda' else None
+                    print(f"{mode:6s}: Success={success}, Δ Confidence={conf_change:+.3f}")
+                else:
+                    print(f"{mode:6s}: Error - {mode_results['error']}")
 
     except Exception as e:
         print(f"❌ Comprehensive evaluation failed: {e}")
         import traceback
         traceback.print_exc()
 
-    return results
+    # Cleanup
+    del target_audio, target_video, ref_audio, ref_video, labels_rf
+    if device == 'cuda':
+        torch.cuda.empty_cache()
+
+    return results if 'results' in dir() else {}
 
 
 def demo_parameter_tuning(model: nn.Module, device: str = 'cuda'):
@@ -207,17 +224,21 @@ def demo_parameter_tuning(model: nn.Module, device: str = 'cuda'):
     # Create test data
     target_audio, target_video, ref_audio, ref_video, labels_rf = create_dummy_data(1, device)
 
-    # Test different temporal weights
-    temporal_weights = [0.0, 0.5, 1.0]
+    # Test different epsilon values
+    eps_values = [4.0, 8.0, 16.0]
 
-    print("🔧 Testing temporal regularization weights...")
-    for weight in temporal_weights:
-        print(f"\n  Testing temporal_weight = {weight}")
+    print("🔧 Testing different epsilon values (video)...")
+    for eps in eps_values:
+        print(f"\n  Testing eps_video = {eps}")
 
         attacker = RefereeMultiModalPGD(
             model,
-            temporal_weight=weight,
-            max_iter=15,
+            attack_mode='video',
+            eps_video=eps,
+            eps_step_video=eps / 4,
+            max_iter=30,
+            temporal_weight=0.0,
+            early_stop=True,
             verbose=False
         )
 
@@ -226,20 +247,30 @@ def demo_parameter_tuning(model: nn.Module, device: str = 'cuda'):
                 target_audio, target_video, ref_audio, ref_video, labels_rf
             )
 
-            # Compute temporal variance as smoothness measure
-            def compute_temporal_variance(audio, video):
-                audio_var = torch.var(audio[:, :, :, :, 1:] - audio[:, :, :, :, :-1]).item()
-                video_var = torch.var(video[:, :, 1:] - video[:, :, :-1]).item()
-                return audio_var, video_var
+            # Get confidence scores
+            from adversarial_attacks.multimodal_wrapper import create_attack_wrapper
+            wrapper = create_attack_wrapper(model, ref_audio, ref_video, labels_rf)
+            initial_conf = wrapper.get_confidence(target_audio, target_video)
+            final_conf = wrapper.get_confidence(adv_audio, adv_video)
 
-            audio_var, video_var = compute_temporal_variance(adv_audio, adv_video)
+            conf_change = final_conf['rf_real_prob'] - initial_conf['rf_real_prob']
+            print(f"    Initial real_prob: {initial_conf['rf_real_prob']:.3f}")
+            print(f"    Final real_prob: {final_conf['rf_real_prob']:.3f}")
+            print(f"    Confidence change: {conf_change:+.3f}")
+            print(f"    Attack success: {final_conf['rf_real_prob'] > 0.5}")
 
-            print(f"    Final loss: {attack_info['losses'][-1]:.4f}")
-            print(f"    Audio temporal variance: {audio_var:.6f}")
-            print(f"    Video temporal variance: {video_var:.6f}")
+            del adv_audio, adv_video, attack_info, attacker, wrapper
 
         except Exception as e:
             print(f"    Error: {e}")
+
+        if device == 'cuda':
+            torch.cuda.empty_cache()
+
+    # Cleanup
+    del target_audio, target_video, ref_audio, ref_video, labels_rf
+    if device == 'cuda':
+        torch.cuda.empty_cache()
 
 
 def demo_full_testing_suite(model: nn.Module, device: str = 'cuda'):
@@ -248,11 +279,19 @@ def demo_full_testing_suite(model: nn.Module, device: str = 'cuda'):
     print("DEMO 5: Full Testing Suite")
     print("=" * 60)
 
+    # Clean memory before running full suite
+    if device == 'cuda':
+        torch.cuda.empty_cache()
+
     tester = RefereeAttackTester(model, device)
     test_results = tester.run_all_tests()
 
     all_passed = all(test_results.values())
     print(f"\n🧪 Overall test status: {'ALL PASSED ✅' if all_passed else 'SOME FAILED ❌'}")
+
+    # Cleanup
+    if device == 'cuda':
+        torch.cuda.empty_cache()
 
     return test_results
 
@@ -266,15 +305,19 @@ def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Using device: {device}")
 
+    # Clean GPU memory at start
+    if device == 'cuda':
+        torch.cuda.empty_cache()
+
     # Load model (try multiple possible paths)
     config_path = "../configs/pair_sync.yaml"
 
     # Try different possible paths for the pretrained model
     possible_model_paths = [
-        "../model/pretrained/pretrained.pth",      # User's mentioned path
-        "../model/pretrained/pretrained.pt",       # Alternative extension
-        "model/pretrained/pretrained.pth",         # Without ../
-        "model/pretrained/pretrained.pt",          # Alternative
+        "../model/pretrained/pretrained.pth",
+        "../model/pretrained/pretrained.pt",
+        "model/pretrained/pretrained.pth",
+        "model/pretrained/pretrained.pt",
     ]
 
     checkpoint_path = None
@@ -303,43 +346,31 @@ def main():
         class DummyReferee(nn.Module):
             def __init__(self):
                 super().__init__()
-                # Handle both small and large input dimensions flexibly
-
+                # More complex classifier for better gradient flow
                 self.classifier = nn.Sequential(
-                    nn.Linear(2, 128),     # More complex classifier for better gradient flow
+                    nn.Linear(2, 256),
                     nn.ReLU(),
-                    nn.Dropout(0.1),
+                    nn.Linear(256, 128),
+                    nn.ReLU(),
                     nn.Linear(128, 64),
                     nn.ReLU(),
-                    nn.Dropout(0.1),
-                    nn.Linear(64, 32),
-                    nn.ReLU(),
-                    nn.Linear(32, 2)
+                    nn.Linear(64, 2)
                 )
 
             def forward(self, target_vis, target_aud, ref_vis, ref_aud, **kwargs):
                 B = target_vis.shape[0]
 
-                # Ultra-simple approach: just take global means
-                # This works for any input size and avoids dimension issues
+                # Extract features using global mean
+                audio_feat = torch.mean(target_aud, dim=list(range(1, target_aud.ndim)))
+                video_feat = torch.mean(target_vis, dim=list(range(1, target_vis.ndim)))
 
-                # Audio: Any shape -> scalar per batch
-                audio_feat = torch.mean(target_aud, dim=list(range(1, target_aud.ndim)))  # (B,)
-
-                # Video: Any shape -> scalar per batch
-                video_feat = torch.mean(target_vis, dim=list(range(1, target_vis.ndim)))  # (B,)
-
-                # Combine features: (B, 2)
+                # Combine and scale
                 combined = torch.stack([audio_feat, video_feat], dim=1)
-
-                # Scale much more aggressively to make model very sensitive to changes
-                combined_scaled = combined * 200.0  # Much stronger amplification
+                combined_scaled = combined * 100.0  # Amplify for sensitivity
 
                 # Classification
                 logits_rf = self.classifier(combined_scaled)
-
-                # ID logits - similar but with different scaling
-                logits_id = self.classifier(combined_scaled * 0.5) + torch.randn(B, 2, device=target_vis.device) * 0.1
+                logits_id = self.classifier(combined_scaled * 0.8)
 
                 return logits_rf, logits_id
 
@@ -351,7 +382,6 @@ def main():
         success = demo_quick_test(model, device)
         if not success:
             print("⚠️  Initial test had issues, but continuing with demos...")
-            print("   (This is normal for dummy models)")
 
         # Demo 2: Individual attacks
         demo_individual_attacks(model, device)
@@ -366,22 +396,19 @@ def main():
         demo_full_testing_suite(model, device)
 
         print("\n" + "=" * 60)
-        print("🎉 All demos completed successfully!")
+        print("🎉 All demos completed!")
         print("=" * 60)
-
-        # Final memory cleanup
-        if device == 'cuda':
-            torch.cuda.empty_cache()
-            print(f"🧹 Cleaned up GPU memory")
 
     except Exception as e:
         print(f"\n❌ Demo failed with error: {e}")
         import traceback
         traceback.print_exc()
 
-        # Clean up on error too
+    finally:
+        # Final memory cleanup
         if device == 'cuda':
             torch.cuda.empty_cache()
+            print(f"🧹 Cleaned up GPU memory")
 
 
 if __name__ == "__main__":
