@@ -47,13 +47,14 @@ class RefereeAttackTester:
         Returns:
             Tuple of (target_audio, target_video, ref_audio, ref_video, labels_rf)
         """
-        # Audio: (B, S, 1, F, Ta) = (B, 8, 1, 128, 66)
-        target_audio = torch.randn(batch_size, 8, 1, 128, 66, device=self.device)
-        ref_audio = torch.randn(batch_size, 8, 1, 128, 66, device=self.device)
+        # Use smaller tensors to avoid memory issues
+        # Audio: (B, S, 1, F, Ta) = (B, 4, 1, 32, 32) - Much smaller than (B, 8, 1, 128, 66)
+        target_audio = torch.randn(batch_size, 4, 1, 32, 32, device=self.device)
+        ref_audio = torch.randn(batch_size, 4, 1, 32, 32, device=self.device)
 
-        # Video: (B, S, Tv, C, H, W) = (B, 8, 16, 3, 224, 224)
-        target_video = torch.rand(batch_size, 8, 16, 3, 224, 224, device=self.device)  # [0,1] range
-        ref_video = torch.rand(batch_size, 8, 16, 3, 224, 224, device=self.device)
+        # Video: (B, S, Tv, C, H, W) = (B, 4, 8, 3, 64, 64) - Much smaller than (B, 8, 16, 3, 224, 224)
+        target_video = torch.rand(batch_size, 4, 8, 3, 64, 64, device=self.device)  # [0,1] range
+        ref_video = torch.rand(batch_size, 4, 8, 3, 64, 64, device=self.device)
 
         # Labels: fake samples (1) - we want to attack these to be classified as real (0)
         labels_rf = torch.ones(batch_size, dtype=torch.long, device=self.device)

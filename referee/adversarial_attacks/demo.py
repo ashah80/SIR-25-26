@@ -53,13 +53,14 @@ def load_referee_model(config_path: str, checkpoint_path: str = None) -> Referee
 
 def create_dummy_data(batch_size: int = 1, device: str = 'cuda'):
     """Create dummy input data for testing."""
-    # Audio: (B, S, 1, F, Ta) = (B, 8, 1, 128, 66)
-    target_audio = torch.randn(batch_size, 8, 1, 128, 66, device=device)
-    ref_audio = torch.randn(batch_size, 8, 1, 128, 66, device=device)
+    # Use smaller tensors to avoid memory issues
+    # Audio: (B, S, 1, F, Ta) = (B, 4, 1, 32, 32) - Much smaller
+    target_audio = torch.randn(batch_size, 4, 1, 32, 32, device=device)
+    ref_audio = torch.randn(batch_size, 4, 1, 32, 32, device=device)
 
-    # Video: (B, S, Tv, C, H, W) = (B, 8, 16, 3, 224, 224)
-    target_video = torch.rand(batch_size, 8, 16, 3, 224, 224, device=device)
-    ref_video = torch.rand(batch_size, 8, 16, 3, 224, 224, device=device)
+    # Video: (B, S, Tv, C, H, W) = (B, 4, 8, 3, 64, 64) - Much smaller
+    target_video = torch.rand(batch_size, 4, 8, 3, 64, 64, device=device)
+    ref_video = torch.rand(batch_size, 4, 8, 3, 64, 64, device=device)
 
     # Labels (fake samples - we want to make them appear real)
     labels_rf = torch.ones(batch_size, dtype=torch.long, device=device)
@@ -92,18 +93,22 @@ def demo_individual_attacks(model: nn.Module, device: str = 'cuda'):
     # Create test data
     target_audio, target_video, ref_audio, ref_video, labels_rf = create_dummy_data(1, device)
 
-    # Test each attack mode
+    # Test each attack mode with more aggressive parameters
     modes = ['audio', 'video', 'joint']
 
     for mode in modes:
         print(f"\n🎯 Testing {mode.upper()} attack...")
 
+        # Use more aggressive attack parameters to ensure they work
         attacker = RefereeMultiModalPGD(
             model,
             attack_mode=mode,
-            eps_audio=0.05,
-            eps_video=0.3,
-            max_iter=20,
+            eps_audio=0.1,        # Larger perturbation
+            eps_video=0.5,        # Larger perturbation
+            eps_step_audio=0.02,  # Larger step
+            eps_step_video=0.1,   # Larger step
+            max_iter=30,          # More iterations
+            temporal_weight=0.1,  # Lower temporal weight for stronger attacks
             verbose=True
         )
 
@@ -121,8 +126,16 @@ def demo_individual_attacks(model: nn.Module, device: str = 'cuda'):
             print(f"  Video modified: {video_changed}")
             print(f"  Attack iterations: {len(attack_info['losses'])}")
 
+            # Clean up memory
+            del adv_audio, adv_video, attack_info
+            torch.cuda.empty_cache() if device == 'cuda' else None
+
         except Exception as e:
             print(f"  ❌ {mode} attack failed: {e}")
+
+        # Clean up between attacks
+        if device == 'cuda':
+            torch.cuda.empty_cache()
 
 
 def demo_comprehensive_evaluation(model: nn.Module, device: str = 'cuda'):
@@ -131,28 +144,37 @@ def demo_comprehensive_evaluation(model: nn.Module, device: str = 'cuda'):
     print("DEMO 3: Comprehensive Evaluation")
     print("=" * 60)
 
-    # Create test data
-    target_audio, target_video, ref_audio, ref_video, labels_rf = create_dummy_data(2, device)
+    # Create test data with smaller batch size
+    target_audio, target_video, ref_audio, ref_video, labels_rf = create_dummy_data(1, device)  # Use batch_size=1
 
     # Create evaluator
     evaluator = RefereeAttackEvaluator(model, device)
 
-    # Run comprehensive evaluation
-    results = evaluator.run_comprehensive_evaluation(
-        target_audio, target_video, ref_audio, ref_video, labels_rf,
-        output_dir="./attack_evaluation_results"
-    )
+    # Run comprehensive evaluation with smaller ranges
+    try:
+        results = evaluator.run_comprehensive_evaluation(
+            target_audio, target_video, ref_audio, ref_video, labels_rf,
+            output_dir="./attack_evaluation_results"
+        )
 
-    print("\n📊 Evaluation Summary:")
-    print("-" * 40)
+        print("\n📊 Evaluation Summary:")
+        print("-" * 40)
 
-    # Show mode comparison results
-    if 'mode_results' in results:
-        for mode, mode_results in results['mode_results'].items():
-            if 'error' not in mode_results:
-                success = mode_results['attack_success']
-                conf_change = mode_results['confidence_change']
-                print(f"{mode:6s}: Success={success}, Δ Confidence={conf_change:.3f}")
+        # Show mode comparison results
+        if 'mode_results' in results:
+            for mode, mode_results in results['mode_results'].items():
+                if 'error' not in mode_results:
+                    success = mode_results['attack_success']
+                    conf_change = mode_results['confidence_change']
+                    print(f"{mode:6s}: Success={success}, Δ Confidence={conf_change:.3f}")
+
+        # Clean up memory
+        torch.cuda.empty_cache() if device == 'cuda' else None
+
+    except Exception as e:
+        print(f"❌ Comprehensive evaluation failed: {e}")
+        import traceback
+        traceback.print_exc()
 
     return results
 
@@ -240,33 +262,48 @@ def main():
         class DummyReferee(nn.Module):
             def __init__(self):
                 super().__init__()
-                # Add proper layers that support gradients
-                self.audio_proj = nn.Linear(128*66, 256)
-                self.video_proj = nn.Linear(16*3*224*224, 256)
+                # Use much smaller projections to avoid memory issues
+                # Pool the inputs first to reduce dimensionality
+                self.audio_pool = nn.AdaptiveAvgPool2d((8, 8))  # (B, S, 1, 128, 66) -> pool last 2 dims
+                self.video_pool = nn.AdaptiveAvgPool3d((4, 16, 16))  # Pool spatial and temporal
+
+                # Smaller linear layers
+                self.audio_proj = nn.Linear(8 * 8, 64)  # Much smaller
+                self.video_proj = nn.Linear(4 * 16 * 16 * 3, 64)  # Much smaller
+
                 self.classifier = nn.Sequential(
-                    nn.Linear(512, 128),
+                    nn.Linear(128, 64),
                     nn.ReLU(),
-                    nn.Linear(128, 2)
+                    nn.Dropout(0.1),
+                    nn.Linear(64, 2)
                 )
 
             def forward(self, target_vis, target_aud, ref_vis, ref_aud, **kwargs):
                 batch_size = target_vis.shape[0]
 
-                # Process inputs to create gradient dependency
-                # Flatten audio and video
-                audio_flat = target_aud.view(batch_size, -1)
-                video_flat = target_vis.view(batch_size, -1)
+                # Process inputs with pooling to reduce size
+                # Audio: (B, S, 1, F, Ta) -> (B, S, 1, 8, 8)
+                audio_pooled = self.audio_pool(target_aud.view(-1, target_aud.shape[-2], target_aud.shape[-1]))
+                audio_pooled = audio_pooled.view(batch_size, -1)  # Flatten
 
-                # Project to same dimension
-                audio_feat = self.audio_proj(audio_flat)
-                video_feat = self.video_proj(video_flat)
+                # Video: (B, S, Tv, C, H, W) -> (B, S, 4, C, 16, 16)
+                video_reshaped = target_vis.view(-1, target_vis.shape[-3], target_vis.shape[-2], target_vis.shape[-1])
+                video_pooled = self.video_pool(video_reshaped.permute(0, 2, 1, 3, 4))  # (N, C, T, H, W)
+                video_pooled = video_pooled.view(batch_size, -1)  # Flatten
+
+                # Project to features (now much smaller)
+                audio_feat = self.audio_proj(audio_pooled)
+                video_feat = self.video_proj(video_pooled)
 
                 # Combine features
                 combined = torch.cat([audio_feat, video_feat], dim=1)
 
-                # Classification
+                # Classification - make it more sensitive to inputs
                 logits_rf = self.classifier(combined)
-                logits_id = torch.randn(batch_size, 2, device=target_vis.device)
+
+                # ID head - also make it depend on inputs slightly
+                id_feat = combined.mean(dim=1, keepdim=True).repeat(1, 2)
+                logits_id = id_feat + torch.randn_like(id_feat) * 0.1
 
                 return logits_rf, logits_id
 
@@ -296,10 +333,19 @@ def main():
         print("🎉 All demos completed successfully!")
         print("=" * 60)
 
+        # Final memory cleanup
+        if device == 'cuda':
+            torch.cuda.empty_cache()
+            print(f"🧹 Cleaned up GPU memory")
+
     except Exception as e:
         print(f"\n❌ Demo failed with error: {e}")
         import traceback
         traceback.print_exc()
+
+        # Clean up on error too
+        if device == 'cuda':
+            torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":

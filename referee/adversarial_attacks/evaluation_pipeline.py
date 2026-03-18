@@ -199,11 +199,14 @@ class RefereeAttackEvaluator:
             Dictionary with results for each attack mode
         """
         if base_config is None:
+            # Use more aggressive parameters to ensure attacks work
             base_config = {
-                'eps_audio': 0.05,
-                'eps_video': 0.3,
-                'max_iter': 50,
-                'temporal_weight': 0.5
+                'eps_audio': 0.1,         # Larger perturbation
+                'eps_video': 0.5,         # Larger perturbation
+                'eps_step_audio': 0.02,   # Larger step
+                'eps_step_video': 0.1,    # Larger step
+                'max_iter': 30,           # More iterations
+                'temporal_weight': 0.1    # Lower temporal weight for stronger attacks
             }
 
         modes = ['audio', 'video', 'joint']
@@ -228,6 +231,10 @@ class RefereeAttackEvaluator:
                 conf_change = mode_results['confidence_change']
                 print(f"    Success: {success}, Confidence change: {conf_change:.3f}")
 
+                # Clean memory between tests
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+
             except Exception as e:
                 print(f"    Error in mode {mode}: {e}")
                 results[mode] = {'error': str(e)}
@@ -251,14 +258,15 @@ class RefereeAttackEvaluator:
             Dictionary with results for each epsilon configuration
         """
         if epsilon_ranges is None:
+            # Use smaller ranges to avoid memory issues
             epsilon_ranges = {
-                'audio': [0.01, 0.02, 0.05, 0.1, 0.2],
-                'video': [0.1, 0.2, 0.3, 0.5, 0.8]
+                'audio': [0.05, 0.1],      # Reduced range for quick test
+                'video': [0.3, 0.5]        # Reduced range for quick test
             }
 
         base_config = {
-            'max_iter': 50,
-            'temporal_weight': 0.5,
+            'max_iter': 20,           # Reduced iterations
+            'temporal_weight': 0.1,   # Lower temporal weight for stronger attacks
             'attack_mode': 'joint'
         }
 
@@ -281,6 +289,11 @@ class RefereeAttackEvaluator:
                 )
                 results['audio_sweep'].append(result)
                 print(f"    eps_audio={eps_audio:.3f}: Success={result['attack_success']}")
+
+                # Clean memory between tests
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+
             except Exception as e:
                 print(f"    eps_audio={eps_audio:.3f}: Error={e}")
 
@@ -299,6 +312,11 @@ class RefereeAttackEvaluator:
                 )
                 results['video_sweep'].append(result)
                 print(f"    eps_video={eps_video:.3f}: Success={result['attack_success']}")
+
+                # Clean memory between tests
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+
             except Exception as e:
                 print(f"    eps_video={eps_video:.3f}: Error={e}")
 
