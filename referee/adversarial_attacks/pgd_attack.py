@@ -303,8 +303,8 @@ class RefereeMultiModalPGD:
             random_factor = torch.rand(orig_video.size(0), 1, device=orig_video.device)
             delta = delta / delta_norm.reshape(-1, 1, 1, 1, 1, 1) * self.eps_video * random_factor.reshape(-1, 1, 1, 1, 1, 1)
             adv_video = orig_video + delta
-            # Clamp to valid range
-            adv_video = torch.clamp(adv_video, 0.0, 1.0)
+            # Clamp to valid range (video is normalized to [-1, 1])
+            adv_video = torch.clamp(adv_video, -1.0, 1.0)
 
         return adv_audio, adv_video
 
@@ -352,8 +352,8 @@ class RefereeMultiModalPGD:
             delta = delta * factor.reshape(-1, 1, 1, 1, 1, 1)
             adv_video = orig_video + delta
 
-            # Clamp to valid pixel range [0, 1]
-            adv_video = torch.clamp(adv_video, 0.0, 1.0)
+            # Clamp to valid pixel range (video is normalized to [-1, 1])
+            adv_video = torch.clamp(adv_video, -1.0, 1.0)
 
         return adv_audio, adv_video
 
