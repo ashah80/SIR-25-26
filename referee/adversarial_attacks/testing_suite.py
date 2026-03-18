@@ -10,15 +10,24 @@ Tests include:
 - Model compatibility checks
 - Temporal coherence validation
 - Attack success measurement
+
+Supports both dummy data (for quick tests) and real data from FakeAVCeleb dataset.
 """
 
+import sys
+from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from typing import Dict, Tuple, Optional
-from .pgd_attack import RefereeMultiModalPGD
-from .multimodal_wrapper import RefereeAttackWrapper, create_attack_wrapper
+
+# Add project root to path
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.append(str(PROJECT_ROOT))
+
+from adversarial_attacks.pgd_attack import RefereeMultiModalPGD
+from adversarial_attacks.multimodal_wrapper import RefereeAttackWrapper, create_attack_wrapper
 
 
 class RefereeAttackTester:
@@ -425,10 +434,15 @@ class RefereeAttackTester:
 
             modes_results[mode] = mode_results
 
-            # Print mode results
-            for test_name, passed in mode_results.items():
-                status = "✓" if passed else "✗"
-                print(f"    {status} {test_name}: {passed}")
+            # Print mode results - distinguish pass/fail criteria from informational
+            print(f"    ✓ execution_successful: {mode_results['execution_successful']}")
+            # These are informational only (expected to be False for single-modality attacks)
+            audio_status = "✓" if mode_results['audio_changed'] else "○"  # ○ = expected False for video-only
+            video_status = "✓" if mode_results['video_changed'] else "○"  # ○ = expected False for audio-only
+            print(f"    {audio_status} audio_changed: {mode_results['audio_changed']}")
+            print(f"    {video_status} video_changed: {mode_results['video_changed']}")
+            correct_status = "✓" if mode_results['correct_modality_attacked'] else "✗"
+            print(f"    {correct_status} correct_modality_attacked: {mode_results['correct_modality_attacked']}")
 
             # Clean up memory after each mode test
             if torch.cuda.is_available():
@@ -475,9 +489,13 @@ class RefereeAttackTester:
         print()
 
         # Test 5: Attack modes
+        # Only check execution_successful and correct_modality_attacked
+        # (audio_changed/video_changed are informational, not pass/fail criteria)
         modes_results = self.test_attack_modes()
         all_results['attack_modes'] = all(
-            all(mode_results.values()) for mode_results in modes_results.values()
+            mode_results.get('execution_successful', False) and
+            mode_results.get('correct_modality_attacked', False)
+            for mode_results in modes_results.values()
         )
         print()
 
@@ -532,6 +550,142 @@ def quick_test_attack_installation(referee_model: nn.Module, device: str = 'cuda
         return basic_working
 
     except Exception as e:
-        print(f"✗ Quick test FAILED with exception: {e}")
+        print(f"Quick test FAILED with exception: {e}")
         print("   This might be normal for dummy models. Try running manual tests.")
         return False
+
+
+def load_real_model(checkpoint_path: Optional[str] = None, device: str = 'cuda'):
+    """Load the real Referee model."""
+    from model.referee import Referee
+    from omegaconf import OmegaConf
+
+    config_path = PROJECT_ROOT / "configs" / "pair_sync.yaml"
+    cfg = OmegaConf.load(config_path)
+
+    model = Referee(cfg.model.params)
+
+    if checkpoint_path is None:
+        checkpoint_path = PROJECT_ROOT / "model" / "pretrained" / "pretrained.pth"
+
+    if Path(checkpoint_path).exists():
+        print(f"Loading checkpoint from {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        if 'state_dict' in checkpoint:
+            model.load_state_dict(checkpoint['state_dict'])
+        else:
+            model.load_state_dict(checkpoint)
+
+    model = model.to(device)
+    model.eval()
+    return model
+
+
+def create_dummy_model(device: str = 'cuda'):
+    """Create a dummy model for testing."""
+    class DummyReferee(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.classifier = nn.Sequential(
+                nn.Linear(2, 256), nn.ReLU(),
+                nn.Linear(256, 128), nn.ReLU(),
+                nn.Linear(128, 64), nn.ReLU(),
+                nn.Linear(64, 2)
+            )
+
+        def forward(self, target_vis, target_aud, ref_vis, ref_aud, **kwargs):
+            audio_feat = torch.mean(target_aud, dim=list(range(1, target_aud.ndim)))
+            video_feat = torch.mean(target_vis, dim=list(range(1, target_vis.ndim)))
+            combined = torch.stack([audio_feat, video_feat], dim=1) * 100.0
+            logits_rf = self.classifier(combined)
+            logits_id = self.classifier(combined * 0.8)
+            return logits_rf, logits_id
+
+    return DummyReferee().to(device)
+
+
+def run_tests_with_real_data(
+    use_real_model: bool = True,
+    use_real_data: bool = True,
+    checkpoint_path: Optional[str] = None,
+):
+    """
+    Run the full test suite with real model and/or real data.
+
+    Args:
+        use_real_model: Whether to use the real Referee model
+        use_real_data: Whether to use real data from FakeAVCeleb dataset
+        checkpoint_path: Path to model checkpoint
+    """
+    print("=" * 60)
+    print("REFEREE ATTACK TESTING SUITE")
+    print("=" * 60)
+
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f"Device: {device}")
+    print(f"Using real model: {use_real_model}")
+    print(f"Using real data: {use_real_data}")
+    print()
+
+    # Load model
+    print("Loading model...")
+    if use_real_model:
+        try:
+            model = load_real_model(checkpoint_path, device)
+            print("Real model loaded successfully!")
+        except Exception as e:
+            print(f"Failed to load real model: {e}")
+            print("Falling back to dummy model.")
+            model = create_dummy_model(device)
+    else:
+        model = create_dummy_model(device)
+        print("Using dummy model.")
+    model.eval()
+    print()
+
+    # Create tester
+    tester = RefereeAttackTester(model, device)
+
+    # Override create_dummy_batch if using real data
+    if use_real_data:
+        try:
+            from adversarial_attacks.real_data_loader import load_real_sample
+
+            def create_real_batch(batch_size: int = 1):
+                target_audio, target_video, ref_audio, ref_video, labels_rf, sample_info = \
+                    load_real_sample(device=device, sample_type='fake')
+                print(f"  Loaded real sample: {sample_info.get('target_path', 'unknown')[:60]}...")
+                return target_audio, target_video, ref_audio, ref_video, labels_rf
+
+            tester.create_dummy_batch = create_real_batch
+            print("Using real data from FakeAVCeleb dataset.\n")
+
+        except Exception as e:
+            print(f"Failed to set up real data: {e}")
+            print("Falling back to dummy data.\n")
+
+    # Run all tests
+    results = tester.run_all_tests()
+
+    print("\nTest suite complete!")
+    return results
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Run Referee attack tests')
+    parser.add_argument('--dummy-data', action='store_true',
+                       help='Use dummy data instead of real dataset')
+    parser.add_argument('--dummy-model', action='store_true',
+                       help='Use dummy model instead of real Referee model')
+    parser.add_argument('--checkpoint', type=str, default=None,
+                       help='Path to model checkpoint')
+
+    args = parser.parse_args()
+
+    run_tests_with_real_data(
+        use_real_model=not args.dummy_model,
+        use_real_data=not args.dummy_data,
+        checkpoint_path=args.checkpoint,
+    )
