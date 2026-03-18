@@ -49,20 +49,37 @@ def load_real_model(checkpoint_path: Optional[str] = None, device: str = 'cuda')
     config_path = PROJECT_ROOT / "configs" / "pair_sync.yaml"
     cfg = OmegaConf.load(config_path)
 
-    # Create model
-    model = Referee(cfg.model.params)
+    # Create model - Referee expects the full cfg, not cfg.model.params
+    model = Referee(cfg)
 
     # Load checkpoint
     if checkpoint_path is None:
         checkpoint_path = PROJECT_ROOT / "model" / "pretrained" / "pretrained.pth"
 
-    if Path(checkpoint_path).exists():
+    checkpoint_path = Path(checkpoint_path)
+    if checkpoint_path.exists():
         print(f"Loading checkpoint from {checkpoint_path}")
         checkpoint = torch.load(checkpoint_path, map_location=device)
-        if 'state_dict' in checkpoint:
-            model.load_state_dict(checkpoint['state_dict'])
+
+        # Handle different checkpoint formats
+        if 'model_state_dict' in checkpoint:
+            state_dict = checkpoint['model_state_dict']
+        elif 'state_dict' in checkpoint:
+            state_dict = checkpoint['state_dict']
         else:
-            model.load_state_dict(checkpoint)
+            state_dict = checkpoint
+
+        # Remove 'module.' prefix if present
+        new_state_dict = {}
+        for k, v in state_dict.items():
+            new_k = k[7:] if k.startswith('module.') else k
+            new_state_dict[new_k] = v
+
+        missing, unexpected = model.load_state_dict(new_state_dict, strict=False)
+        if missing:
+            print(f"  Missing keys: {len(missing)} keys")
+        if unexpected:
+            print(f"  Unexpected keys: {len(unexpected)} keys")
         print("Checkpoint loaded successfully!")
     else:
         print(f"Warning: Checkpoint not found at {checkpoint_path}")

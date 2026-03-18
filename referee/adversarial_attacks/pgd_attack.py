@@ -199,10 +199,10 @@ class RefereeMultiModalPGD:
                 # Update perturbations using gradient ASCENT for untargeted attacks
                 with torch.no_grad():
                     if self.attack_mode in ['audio', 'joint'] and grad_audio is not None:
-                        # Normalize gradient
-                        grad_flat = grad_audio.view(batch_size, -1)
+                        # Normalize gradient (use reshape for non-contiguous tensors)
+                        grad_flat = grad_audio.reshape(batch_size, -1)
                         grad_norm = torch.norm(grad_flat, dim=1, keepdim=True) + 1e-10
-                        grad_normalized = grad_audio / grad_norm.view(-1, 1, 1, 1, 1)
+                        grad_normalized = grad_audio / grad_norm.reshape(-1, 1, 1, 1, 1)
 
                         # GRADIENT ASCENT for untargeted (maximize loss)
                         # GRADIENT DESCENT for targeted (minimize loss toward target)
@@ -212,10 +212,10 @@ class RefereeMultiModalPGD:
                             adv_audio = adv_audio + self.eps_step_audio * grad_normalized
 
                     if self.attack_mode in ['video', 'joint'] and grad_video is not None:
-                        # Normalize gradient
-                        grad_flat = grad_video.view(batch_size, -1)
+                        # Normalize gradient (use reshape for non-contiguous tensors)
+                        grad_flat = grad_video.reshape(batch_size, -1)
                         grad_norm = torch.norm(grad_flat, dim=1, keepdim=True) + 1e-10
-                        grad_normalized = grad_video / grad_norm.view(-1, 1, 1, 1, 1, 1)
+                        grad_normalized = grad_video / grad_norm.reshape(-1, 1, 1, 1, 1, 1)
 
                         # GRADIENT ASCENT for untargeted (maximize loss)
                         # GRADIENT DESCENT for targeted (minimize loss toward target)
@@ -287,21 +287,21 @@ class RefereeMultiModalPGD:
         if self.attack_mode in ['audio', 'joint']:
             # Random perturbation with L2 norm = eps_audio * random_factor
             delta = torch.randn_like(orig_audio)
-            delta_flat = delta.view(orig_audio.size(0), -1)
+            delta_flat = delta.reshape(orig_audio.size(0), -1)
             delta_norm = torch.norm(delta_flat, dim=1, keepdim=True) + 1e-10
             # Random magnitude between 0 and eps
             random_factor = torch.rand(orig_audio.size(0), 1, device=orig_audio.device)
-            delta = delta / delta_norm.view(-1, 1, 1, 1, 1) * self.eps_audio * random_factor.view(-1, 1, 1, 1, 1)
+            delta = delta / delta_norm.reshape(-1, 1, 1, 1, 1) * self.eps_audio * random_factor.reshape(-1, 1, 1, 1, 1)
             adv_audio = orig_audio + delta
 
         if self.attack_mode in ['video', 'joint']:
             # Random perturbation with L2 norm = eps_video * random_factor
             delta = torch.randn_like(orig_video)
-            delta_flat = delta.view(orig_video.size(0), -1)
+            delta_flat = delta.reshape(orig_video.size(0), -1)
             delta_norm = torch.norm(delta_flat, dim=1, keepdim=True) + 1e-10
             # Random magnitude between 0 and eps
             random_factor = torch.rand(orig_video.size(0), 1, device=orig_video.device)
-            delta = delta / delta_norm.view(-1, 1, 1, 1, 1, 1) * self.eps_video * random_factor.view(-1, 1, 1, 1, 1, 1)
+            delta = delta / delta_norm.reshape(-1, 1, 1, 1, 1, 1) * self.eps_video * random_factor.reshape(-1, 1, 1, 1, 1, 1)
             adv_video = orig_video + delta
             # Clamp to valid range
             adv_video = torch.clamp(adv_video, 0.0, 1.0)
@@ -333,23 +333,23 @@ class RefereeMultiModalPGD:
         if self.attack_mode in ['audio', 'joint']:
             # Compute perturbation
             delta = adv_audio - orig_audio
-            delta_flat = delta.view(delta.size(0), -1)
+            delta_flat = delta.reshape(delta.size(0), -1)
             delta_norm = torch.norm(delta_flat, dim=1, keepdim=True)
 
             # Project to L2 ball
             factor = torch.clamp(self.eps_audio / (delta_norm + 1e-10), max=1.0)
-            delta = delta * factor.view(-1, 1, 1, 1, 1)
+            delta = delta * factor.reshape(-1, 1, 1, 1, 1)
             adv_audio = orig_audio + delta
 
         if self.attack_mode in ['video', 'joint']:
             # Compute perturbation
             delta = adv_video - orig_video
-            delta_flat = delta.view(delta.size(0), -1)
+            delta_flat = delta.reshape(delta.size(0), -1)
             delta_norm = torch.norm(delta_flat, dim=1, keepdim=True)
 
             # Project to L2 ball
             factor = torch.clamp(self.eps_video / (delta_norm + 1e-10), max=1.0)
-            delta = delta * factor.view(-1, 1, 1, 1, 1, 1)
+            delta = delta * factor.reshape(-1, 1, 1, 1, 1, 1)
             adv_video = orig_video + delta
 
             # Clamp to valid pixel range [0, 1]
@@ -364,13 +364,13 @@ class RefereeMultiModalPGD:
 
         if self.attack_mode in ['audio', 'joint']:
             delta = adv_audio - orig_audio
-            audio_norm = torch.norm(delta.view(delta.size(0), -1), dim=1)
+            audio_norm = torch.norm(delta.reshape(delta.size(0), -1), dim=1)
             norms['audio_l2_norm'] = audio_norm.mean().item()
             norms['audio_l2_max'] = audio_norm.max().item()
 
         if self.attack_mode in ['video', 'joint']:
             delta = adv_video - orig_video
-            video_norm = torch.norm(delta.view(delta.size(0), -1), dim=1)
+            video_norm = torch.norm(delta.reshape(delta.size(0), -1), dim=1)
             norms['video_l2_norm'] = video_norm.mean().item()
             norms['video_l2_max'] = video_norm.max().item()
 
