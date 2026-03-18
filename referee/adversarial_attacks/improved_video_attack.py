@@ -243,18 +243,23 @@ class FlickeringAttack:
         S, T, C, H, W = shape
 
         # Learnable spatial basis patterns (small, tiled)
+        # FIXED: Create tensor first, then set requires_grad to ensure leaf tensors
         basis_size = max(W // self.spatial_freq, 16)
         basis_patterns = torch.randn(
             num_basis, C, basis_size, basis_size,
-            device=self.device, requires_grad=True
-        ) * 0.01
+            device=self.device
+        )
+        basis_patterns = basis_patterns * 0.01  # Scale
+        basis_patterns = basis_patterns.detach().requires_grad_(True)  # Make leaf tensor
 
         # Learnable temporal coefficients for each basis
         # Shape: (num_basis, S*T)
         temporal_coeffs = torch.randn(
             num_basis, S * T,
-            device=self.device, requires_grad=True
-        ) * 0.1
+            device=self.device
+        )
+        temporal_coeffs = temporal_coeffs * 0.1  # Scale
+        temporal_coeffs = temporal_coeffs.detach().requires_grad_(True)  # Make leaf tensor
 
         return [basis_patterns, temporal_coeffs]
 
@@ -493,7 +498,13 @@ def run_improved_art_attack(
     verbose: bool = True
 ) -> Tuple[torch.Tensor, Dict[str, Any]]:
     """
-    Run improved ART attack with smaller epsilon and fewer iterations.
+    Run improved ART attack with properly scaled epsilon.
+
+    NOTE: For L2 norm with video (19M elements), the per-pixel perturbation is:
+    per_pixel ≈ eps / sqrt(num_elements)
+
+    So eps=0.1 → per_pixel ≈ 0.00002 (essentially nothing!)
+    For visible effect, we auto-scale: eps_scaled = eps * sqrt(num_elements) * 0.01
     """
     if not HAVE_ART:
         raise ImportError("ART not installed")
@@ -506,6 +517,14 @@ def run_improved_art_attack(
         device=device
     )
     wrapper.eval()
+
+    # Auto-scale epsilon for L2 norm on high-dimensional video
+    # This gives approximately eps perturbation per pixel
+    num_elements = wrapper.flattened_size
+    eps_scaled = eps * np.sqrt(num_elements) * 0.1  # Scale factor for reasonable perturbation
+
+    if verbose:
+        print(f"L2 epsilon scaling: {eps:.2f} → {eps_scaled:.1f} (for {num_elements:,} elements)")
 
     # Get initial prediction
     with torch.no_grad():
@@ -531,8 +550,8 @@ def run_improved_art_attack(
     attack = ProjectedGradientDescent(
         estimator=classifier,
         norm=2,              # L2 instead of Linf (smoother)
-        eps=eps,
-        eps_step=eps / 10,   # Smaller steps
+        eps=eps_scaled,      # Use scaled epsilon
+        eps_step=eps_scaled / 10,   # Proportionate step size
         max_iter=max_iter,
         targeted=False,
         num_random_init=0,   # No random init (faster)
@@ -544,7 +563,7 @@ def run_improved_art_attack(
     labels_np = labels.cpu().numpy()
 
     if verbose:
-        print(f"Running improved ART attack (L2 norm, eps={eps}, iter={max_iter})...")
+        print(f"Running improved ART attack (L2 norm, eps_scaled={eps_scaled:.1f}, iter={max_iter})...")
 
     start_time = time.time()
     adv_video_flat = attack.generate(x=video_flat, y=labels_np)
