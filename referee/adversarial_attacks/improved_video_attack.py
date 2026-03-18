@@ -149,10 +149,12 @@ class FlickeringAttack:
         self,
         model: nn.Module,
         eps: float = 0.1,
-        flicker_freq: float = 2.0,      # Flicker frequency in Hz
-        spatial_freq: int = 8,           # Spatial frequency (lower = smoother)
+        flicker_freq: float = 5.0,       # Flicker frequency in Hz (increased for more aggressive attack)
+        spatial_freq: int = 4,           # Spatial frequency (lower = larger patterns = more effective)
+        num_basis: int = 8,              # Number of basis patterns (more = more expressive)
         num_iterations: int = 50,
         step_size: float = 0.01,
+        smoothness_weight: float = 1.0,  # Temporal smoothness regularization (lower = more aggressive)
         targeted: bool = False,
         device: str = 'cuda'
     ):
@@ -160,10 +162,12 @@ class FlickeringAttack:
         Args:
             model: Target model
             eps: Maximum perturbation magnitude
-            flicker_freq: Temporal flicker frequency in Hz
-            spatial_freq: Spatial pattern frequency (lower = larger patterns)
+            flicker_freq: Temporal flicker frequency in Hz (higher = faster flicker)
+            spatial_freq: Spatial pattern frequency (lower = larger, more effective patterns)
+            num_basis: Number of learnable basis patterns (more = more expressive)
             num_iterations: Number of optimization iterations
             step_size: Gradient step size
+            smoothness_weight: Weight for temporal smoothness loss (lower = more aggressive)
             targeted: Whether to do targeted attack
             device: Device to use
         """
@@ -171,8 +175,10 @@ class FlickeringAttack:
         self.eps = eps
         self.flicker_freq = flicker_freq
         self.spatial_freq = spatial_freq
+        self.num_basis = num_basis
         self.num_iterations = num_iterations
         self.step_size = step_size
+        self.smoothness_weight = smoothness_weight
         self.targeted = targeted
         self.device = device
 
@@ -223,8 +229,7 @@ class FlickeringAttack:
 
     def _create_learnable_flicker(
         self,
-        shape: Tuple[int, ...],
-        num_basis: int = 4
+        shape: Tuple[int, ...]
     ) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         """
         Create learnable flickering perturbation using basis patterns.
@@ -234,7 +239,6 @@ class FlickeringAttack:
 
         Args:
             shape: (S, T, C, H, W)
-            num_basis: Number of spatial basis patterns
 
         Returns:
             perturbation: Initial perturbation tensor
@@ -246,7 +250,7 @@ class FlickeringAttack:
         # FIXED: Create tensor first, then set requires_grad to ensure leaf tensors
         basis_size = max(W // self.spatial_freq, 16)
         basis_patterns = torch.randn(
-            num_basis, C, basis_size, basis_size,
+            self.num_basis, C, basis_size, basis_size,
             device=self.device
         )
         basis_patterns = basis_patterns * 0.01  # Scale
@@ -255,7 +259,7 @@ class FlickeringAttack:
         # Learnable temporal coefficients for each basis
         # Shape: (num_basis, S*T)
         temporal_coeffs = torch.randn(
-            num_basis, S * T,
+            self.num_basis, S * T,
             device=self.device
         )
         temporal_coeffs = temporal_coeffs * 0.1  # Scale
@@ -336,7 +340,7 @@ class FlickeringAttack:
 
         # Initialize learnable parameters
         shape = target_video.shape[1:]  # (S, T, C, H, W)
-        params = self._create_learnable_flicker(shape, num_basis=4)
+        params = self._create_learnable_flicker(shape)
 
         # Optimizer for the parameters
         optimizer = torch.optim.Adam(params, lr=self.step_size)
@@ -374,7 +378,7 @@ class FlickeringAttack:
             # Add temporal smoothness regularization
             if perturbation.shape[2] > 1:  # T > 1
                 temporal_diff = perturbation[:, :, 1:] - perturbation[:, :, :-1]
-                smoothness_loss = torch.mean(temporal_diff ** 2) * 10.0
+                smoothness_loss = torch.mean(temporal_diff ** 2) * self.smoothness_weight
                 loss = loss + smoothness_loss
 
             loss.backward()
@@ -421,6 +425,9 @@ class FlickeringAttack:
             'perturbation_linf_norm': linf_norm,
             'eps': self.eps,
             'flicker_freq': self.flicker_freq,
+            'spatial_freq': self.spatial_freq,
+            'num_basis': self.num_basis,
+            'smoothness_weight': self.smoothness_weight,
             'num_iterations': self.num_iterations,
             'attack_time_seconds': attack_time
         }
@@ -731,6 +738,16 @@ def main():
                         help="Perturbation budget (default: 0.2)")
     parser.add_argument("--max-iter", type=int, default=100,
                         help="Max iterations (default: 100)")
+    parser.add_argument("--flicker-freq", type=float, default=5.0,
+                        help="Temporal flicker frequency in Hz (default: 5.0, higher = faster flicker)")
+    parser.add_argument("--spatial-freq", type=int, default=4,
+                        help="Spatial pattern frequency (default: 4, lower = larger patterns = more effective)")
+    parser.add_argument("--num-basis", type=int, default=8,
+                        help="Number of basis patterns (default: 8, more = more expressive)")
+    parser.add_argument("--smoothness-weight", type=float, default=1.0,
+                        help="Temporal smoothness regularization weight (default: 1.0, lower = more aggressive)")
+    parser.add_argument("--step-size", type=float, default=0.03,
+                        help="Optimizer step size / learning rate (default: 0.03)")
     parser.add_argument("--device", type=str, default="cuda")
 
     args = parser.parse_args()
@@ -773,10 +790,12 @@ def main():
                 attack = FlickeringAttack(
                     model=model,
                     eps=args.eps,
-                    flicker_freq=2.0,
-                    spatial_freq=8,
+                    flicker_freq=args.flicker_freq,
+                    spatial_freq=args.spatial_freq,
+                    num_basis=args.num_basis,
                     num_iterations=args.max_iter,
-                    step_size=0.02,  # Increased from 0.01 for stronger attack
+                    step_size=args.step_size,
+                    smoothness_weight=args.smoothness_weight,
                     device=args.device
                 )
                 adv_video, attack_info = attack.attack(

@@ -67,8 +67,9 @@ class VideoFlickeringAttack(nn.Module):
     def __init__(
         self,
         video_shape: Tuple[int, ...],  # (S, T, C, H, W)
-        num_basis: int = 4,
-        spatial_freq: int = 8,
+        num_basis: int = 8,           # Increased from 4
+        spatial_freq: int = 4,        # Decreased from 8 (larger patterns)
+        flicker_freq: float = 5.0,    # Add flicker frequency control
         device: str = 'cuda'
     ):
         super().__init__()
@@ -77,6 +78,8 @@ class VideoFlickeringAttack(nn.Module):
         self.video_shape = video_shape
         self.device = device
         self.num_basis = num_basis
+        self.spatial_freq = spatial_freq
+        self.flicker_freq = flicker_freq
 
         # Learnable spatial basis patterns - use nn.Parameter (always leaf!)
         basis_size = max(W // spatial_freq, 16)
@@ -271,6 +274,10 @@ class JointAttack:
         video_lr: float = 0.02,       # Increased from 0.01
         audio_step: float = 1.0,      # Increased from 0.5
         num_iterations: int = 100,    # Increased from 50
+        flicker_freq: float = 5.0,    # Temporal flicker frequency
+        spatial_freq: int = 4,        # Spatial frequency (lower = larger patterns)
+        num_basis: int = 8,           # Number of basis patterns
+        smoothness_weight: float = 1.0,  # Temporal smoothness (lower = more aggressive)
         device: str = 'cuda'
     ):
         self.video_eps = video_eps
@@ -278,6 +285,10 @@ class JointAttack:
         self.video_lr = video_lr
         self.audio_step = audio_step
         self.num_iterations = num_iterations
+        self.flicker_freq = flicker_freq
+        self.spatial_freq = spatial_freq
+        self.num_basis = num_basis
+        self.smoothness_weight = smoothness_weight
         self.device = device
 
     def attack(
@@ -314,8 +325,9 @@ class JointAttack:
         video_shape = target_video.shape[1:]  # (S, T, C, H, W)
         video_attack = VideoFlickeringAttack(
             video_shape=video_shape,
-            num_basis=4,
-            spatial_freq=8,
+            num_basis=self.num_basis,
+            spatial_freq=self.spatial_freq,
+            flicker_freq=self.flicker_freq,
             device=self.device
         )
 
@@ -355,7 +367,7 @@ class JointAttack:
             # Add temporal smoothness for video
             if video_pert.shape[2] > 1:
                 temporal_diff = video_pert[:, :, 1:] - video_pert[:, :, :-1]
-                smoothness = torch.mean(temporal_diff ** 2) * 5.0
+                smoothness = torch.mean(temporal_diff ** 2) * self.smoothness_weight
                 loss = loss + smoothness
 
             # Backward
@@ -788,10 +800,23 @@ def main():
                         help="Output directory")
     parser.add_argument("--video-eps", type=float, default=0.2,
                         help="Video perturbation budget (default: 0.2)")
-    parser.add_argument("--audio-eps", type=float, default=5.0,
-                        help="Audio perturbation budget L2 (default: 5.0)")
+    parser.add_argument("--audio-eps", type=float, default=1.0,
+                        help="Audio perturbation budget L2 (default: 1.0, reduced for human-like audio). "
+                             "Use 0.5-1.0 for human-like speech, 3.0-5.0 for maximum attack strength")
     parser.add_argument("--max-iter", type=int, default=100,
                         help="Max iterations (default: 100)")
+    parser.add_argument("--video-lr", type=float, default=0.03,
+                        help="Video learning rate (default: 0.03)")
+    parser.add_argument("--audio-step", type=float, default=0.5,
+                        help="Audio PGD step size (default: 0.5)")
+    parser.add_argument("--flicker-freq", type=float, default=7.0,
+                        help="Temporal flicker frequency in Hz (default: 7.0, higher = faster flicker)")
+    parser.add_argument("--spatial-freq", type=int, default=3,
+                        help="Spatial pattern frequency (default: 3, lower = larger patterns = more effective)")
+    parser.add_argument("--num-basis", type=int, default=12,
+                        help="Number of basis patterns (default: 12, more = more expressive)")
+    parser.add_argument("--smoothness-weight", type=float, default=0.5,
+                        help="Temporal smoothness weight (default: 0.5, lower = more aggressive)")
     parser.add_argument("--device", type=str, default="cuda")
 
     args = parser.parse_args()
@@ -800,6 +825,9 @@ def main():
     print("Joint Adversarial Attack: Video Flickering + Audio PGD")
     print("=" * 70)
     print(f"Video eps: {args.video_eps}, Audio eps: {args.audio_eps}")
+    print(f"Video LR: {args.video_lr}, Audio step: {args.audio_step}")
+    print(f"Flicker freq: {args.flicker_freq}Hz, Spatial freq: {args.spatial_freq}")
+    print(f"Num basis: {args.num_basis}, Smoothness: {args.smoothness_weight}")
     print(f"Max iterations: {args.max_iter}")
     print()
 
@@ -839,9 +867,13 @@ def main():
             joint_attack = JointAttack(
                 video_eps=args.video_eps,
                 audio_eps=args.audio_eps,
-                video_lr=0.02,      # Increased for stronger attack
-                audio_step=1.0,     # Increased for stronger attack
+                video_lr=args.video_lr,
+                audio_step=args.audio_step,
                 num_iterations=args.max_iter,
+                flicker_freq=args.flicker_freq,
+                spatial_freq=args.spatial_freq,
+                num_basis=args.num_basis,
+                smoothness_weight=args.smoothness_weight,
                 device=args.device
             )
 
@@ -931,6 +963,12 @@ def main():
         f.write("=" * 50 + "\n\n")
         f.write(f"Video eps: {args.video_eps}\n")
         f.write(f"Audio eps: {args.audio_eps}\n")
+        f.write(f"Video LR: {args.video_lr}\n")
+        f.write(f"Audio step: {args.audio_step}\n")
+        f.write(f"Flicker freq: {args.flicker_freq}Hz\n")
+        f.write(f"Spatial freq: {args.spatial_freq}\n")
+        f.write(f"Num basis: {args.num_basis}\n")
+        f.write(f"Smoothness weight: {args.smoothness_weight}\n")
         f.write(f"Max iterations: {args.max_iter}\n\n")
 
         if valid:
