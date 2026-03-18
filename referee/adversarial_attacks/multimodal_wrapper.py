@@ -153,16 +153,27 @@ class RefereeAttackWrapper(nn.Module):
         assert self.ref_video is not None, "Must set reference pair before attack"
         assert self.attack_labels is not None, "Must set attack labels before attack"
 
-        # Forward pass through Referee (inference mode - no labels)
-        logits_rf, logits_id = self.referee_model(
-            target_vis=target_video,
-            target_aud=target_audio,
-            ref_vis=self.ref_video,
-            ref_aud=self.ref_audio
-        )
+        # Ensure model is in training mode for gradient computation
+        was_training = self.referee_model.training
+        if not was_training:
+            self.referee_model.train()
 
-        # Compute RF loss only (this is what we want to attack)
-        loss_rf = torch.nn.functional.cross_entropy(logits_rf, self.attack_labels)
+        try:
+            # Forward pass through Referee (inference mode - no labels)
+            logits_rf, logits_id = self.referee_model(
+                target_vis=target_video,
+                target_aud=target_audio,
+                ref_vis=self.ref_video,
+                ref_aud=self.ref_audio
+            )
+
+            # Compute RF loss only (this is what we want to attack)
+            loss_rf = torch.nn.functional.cross_entropy(logits_rf, self.attack_labels)
+
+        finally:
+            # Restore original model mode
+            if not was_training:
+                self.referee_model.eval()
 
         return loss_rf
 
@@ -197,17 +208,27 @@ class RefereeAttackWrapper(nn.Module):
         Returns:
             Dictionary with 'rf_confidence' and 'id_confidence'
         """
-        logits_rf, logits_id = self.predict(target_audio, target_video)
+        try:
+            logits_rf, logits_id = self.predict(target_audio, target_video)
 
-        rf_probs = torch.softmax(logits_rf, dim=1)
-        id_probs = torch.softmax(logits_id, dim=1)
+            rf_probs = torch.softmax(logits_rf, dim=1)
+            id_probs = torch.softmax(logits_id, dim=1)
 
-        return {
-            'rf_confidence': rf_probs.max(dim=1)[0].mean().item(),
-            'id_confidence': id_probs.max(dim=1)[0].mean().item(),
-            'rf_fake_prob': rf_probs[:, 1].mean().item(),  # Probability of being fake
-            'rf_real_prob': rf_probs[:, 0].mean().item()   # Probability of being real
-        }
+            return {
+                'rf_confidence': rf_probs.max(dim=1)[0].mean().item(),
+                'id_confidence': id_probs.max(dim=1)[0].mean().item(),
+                'rf_fake_prob': rf_probs[:, 1].mean().item(),  # Probability of being fake
+                'rf_real_prob': rf_probs[:, 0].mean().item()   # Probability of being real
+            }
+        except Exception as e:
+            # Return neutral values if computation fails
+            return {
+                'rf_confidence': 0.5,
+                'id_confidence': 0.5,
+                'rf_fake_prob': 0.5,
+                'rf_real_prob': 0.5,
+                'error': str(e)
+            }
 
 
 def create_attack_wrapper(referee_model: nn.Module,

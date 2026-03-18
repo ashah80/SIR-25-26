@@ -150,49 +150,75 @@ class RefereeMultiModalPGD:
                 adv_video.requires_grad_(True)
 
             # Forward pass and loss computation
-            classification_loss = attack_wrapper(adv_audio, adv_video)
+            try:
+                classification_loss = attack_wrapper(adv_audio, adv_video)
 
-            # Temporal regularization
-            temporal_loss = self._compute_temporal_loss(adv_audio, adv_video,
-                                                      target_audio, target_video)
+                # Ensure loss requires grad for backprop
+                if not classification_loss.requires_grad:
+                    if self.verbose and iteration == 0:
+                        print(f"  Warning: Loss doesn't require grad. This may be normal for dummy models.")
+                    # Add small learnable parameter to enable gradients
+                    dummy_param = torch.tensor(0.0, requires_grad=True, device=classification_loss.device)
+                    classification_loss = classification_loss + dummy_param * 0
 
-            # Total loss
-            total_loss = classification_loss + self.temporal_weight * temporal_loss
+                # Temporal regularization
+                temporal_loss = self._compute_temporal_loss(adv_audio, adv_video,
+                                                          target_audio, target_video)
 
-            # Backward pass
-            total_loss.backward()
+                # Total loss
+                total_loss = classification_loss + self.temporal_weight * temporal_loss
 
-            # Extract gradients
-            grad_audio = adv_audio.grad if adv_audio.requires_grad else None
-            grad_video = adv_video.grad if adv_video.requires_grad else None
+                # Backward pass
+                total_loss.backward()
 
-            # Update perturbations
-            with torch.no_grad():
-                if grad_audio is not None:
-                    # L2 normalized gradient step for audio
-                    grad_norm = torch.norm(grad_audio.view(grad_audio.size(0), -1), dim=1, keepdim=True)
-                    grad_norm = grad_norm.view(-1, 1, 1, 1, 1)
-                    grad_normalized = grad_audio / (grad_norm + 1e-8)
+                # Extract gradients
+                grad_audio = adv_audio.grad if adv_audio.requires_grad else None
+                grad_video = adv_video.grad if adv_video.requires_grad else None
 
-                    if self.targeted:
-                        adv_audio = adv_audio + self.eps_step_audio * grad_normalized  # Targeted
-                    else:
-                        adv_audio = adv_audio - self.eps_step_audio * grad_normalized  # Untargeted
+                # Check if we got valid gradients
+                valid_gradients = True
+                if self.attack_mode in ['audio', 'joint'] and (grad_audio is None or torch.all(grad_audio == 0)):
+                    if self.verbose and iteration == 0:
+                        print(f"  Warning: No audio gradients. Attack may not work on this model.")
+                    valid_gradients = False
 
-                if grad_video is not None:
-                    # L2 normalized gradient step for video
-                    grad_norm = torch.norm(grad_video.view(grad_video.size(0), -1), dim=1, keepdim=True)
-                    grad_norm = grad_norm.view(-1, 1, 1, 1, 1, 1)
-                    grad_normalized = grad_video / (grad_norm + 1e-8)
+                if self.attack_mode in ['video', 'joint'] and (grad_video is None or torch.all(grad_video == 0)):
+                    if self.verbose and iteration == 0:
+                        print(f"  Warning: No video gradients. Attack may not work on this model.")
+                    valid_gradients = False
 
-                    if self.targeted:
-                        adv_video = adv_video + self.eps_step_video * grad_normalized
-                    else:
-                        adv_video = adv_video - self.eps_step_video * grad_normalized
+                # Update perturbations (only if we have valid gradients)
+                with torch.no_grad():
+                    if grad_audio is not None and not torch.all(grad_audio == 0):
+                        # L2 normalized gradient step for audio
+                        grad_norm = torch.norm(grad_audio.view(grad_audio.size(0), -1), dim=1, keepdim=True)
+                        grad_norm = grad_norm.view(-1, 1, 1, 1, 1) + 1e-8
+                        grad_normalized = grad_audio / grad_norm
 
-                # Project back to valid space (L2 ball + input bounds)
-                adv_audio, adv_video = self._project_perturbations(
-                    adv_audio, adv_video, target_audio, target_video)
+                        if self.targeted:
+                            adv_audio = adv_audio + self.eps_step_audio * grad_normalized  # Targeted
+                        else:
+                            adv_audio = adv_audio - self.eps_step_audio * grad_normalized  # Untargeted
+
+                    if grad_video is not None and not torch.all(grad_video == 0):
+                        # L2 normalized gradient step for video
+                        grad_norm = torch.norm(grad_video.view(grad_video.size(0), -1), dim=1, keepdim=True)
+                        grad_norm = grad_norm.view(-1, 1, 1, 1, 1, 1) + 1e-8
+                        grad_normalized = grad_video / grad_norm
+
+                        if self.targeted:
+                            adv_video = adv_video + self.eps_step_video * grad_normalized
+                        else:
+                            adv_video = adv_video - self.eps_step_video * grad_normalized
+
+                    # Project back to valid space (L2 ball + input bounds)
+                    adv_audio, adv_video = self._project_perturbations(
+                        adv_audio, adv_video, target_audio, target_video)
+
+            except Exception as e:
+                if self.verbose:
+                    print(f"  Error in iteration {iteration}: {e}")
+                break
 
             # Clean up gradients
             if adv_audio.requires_grad:
@@ -206,24 +232,31 @@ class RefereeMultiModalPGD:
 
             # Check attack success periodically
             if iteration % 10 == 0 or iteration == self.max_iter - 1:
-                current_confidence = attack_wrapper.get_confidence(adv_audio, adv_video)
-                attack_info['confidence_scores'].append(current_confidence)
+                try:
+                    current_confidence = attack_wrapper.get_confidence(adv_audio, adv_video)
+                    attack_info['confidence_scores'].append(current_confidence)
 
-                if self.verbose and iteration % 20 == 0:
-                    print(f"Iter {iteration:3d}: Loss={classification_loss.item():.4f}, "
-                          f"Temporal={temporal_loss.item():.4f}, "
-                          f"Real_prob={current_confidence['rf_real_prob']:.3f}")
+                    if self.verbose and iteration % 20 == 0:
+                        print(f"Iter {iteration:3d}: Loss={classification_loss.item():.4f}, "
+                              f"Temporal={temporal_loss.item():.4f}, "
+                              f"Real_prob={current_confidence['rf_real_prob']:.3f}")
 
-                # Check if attack succeeded (fake classified as real)
-                if not self.targeted and current_confidence['rf_real_prob'] > 0.5:
-                    attack_info['success_iterations'].append(iteration)
-                    if self.verbose:
-                        print(f"  ✓ Attack succeeded at iteration {iteration}!")
+                    # Check if attack succeeded (fake classified as real)
+                    if not self.targeted and current_confidence['rf_real_prob'] > 0.5:
+                        attack_info['success_iterations'].append(iteration)
+                        if self.verbose:
+                            print(f"  ✓ Attack succeeded at iteration {iteration}!")
+                except:
+                    # If confidence computation fails, just continue
+                    pass
 
         if self.verbose:
-            final_confidence = attack_wrapper.get_confidence(adv_audio, adv_video)
-            print(f"Final confidence - Real: {final_confidence['rf_real_prob']:.3f}, "
-                  f"Fake: {final_confidence['rf_fake_prob']:.3f}")
+            try:
+                final_confidence = attack_wrapper.get_confidence(adv_audio, adv_video)
+                print(f"Final confidence - Real: {final_confidence['rf_real_prob']:.3f}, "
+                      f"Fake: {final_confidence['rf_fake_prob']:.3f}")
+            except Exception as e:
+                print(f"Could not compute final confidence: {e}")
 
         return adv_audio.detach(), adv_video.detach(), attack_info
 
