@@ -266,11 +266,11 @@ class JointAttack:
 
     def __init__(
         self,
-        video_eps: float = 0.1,
-        audio_eps: float = 3.0,
-        video_lr: float = 0.01,
-        audio_step: float = 0.5,
-        num_iterations: int = 50,
+        video_eps: float = 0.2,       # Increased from 0.1
+        audio_eps: float = 5.0,       # Increased from 3.0
+        video_lr: float = 0.02,       # Increased from 0.01
+        audio_step: float = 1.0,      # Increased from 0.5
+        num_iterations: int = 100,    # Increased from 50
         device: str = 'cuda'
     ):
         self.video_eps = video_eps
@@ -522,6 +522,61 @@ def save_audio_wav(audio: np.ndarray, save_path: Path, sample_rate: int = 16000)
     print(f"  Saved audio WAV: {save_path}")
 
 
+def extract_audio_from_video(video_path: str, output_path: Path, sample_rate: int = 16000):
+    """
+    Extract audio directly from video file using ffmpeg.
+
+    This produces clean, listenable audio (not reconstructed from mel-spectrograms).
+
+    Args:
+        video_path: Path to source video file
+        output_path: Path to save WAV file
+        sample_rate: Audio sample rate
+    """
+    import subprocess
+
+    video_path = Path(video_path)
+    if not video_path.exists():
+        print(f"  Warning: Video file not found: {video_path}")
+        return False
+
+    try:
+        # Use ffmpeg to extract audio
+        cmd = [
+            'ffmpeg', '-y',  # Overwrite output
+            '-i', str(video_path),
+            '-vn',  # No video
+            '-acodec', 'pcm_s16le',  # PCM 16-bit
+            '-ar', str(sample_rate),  # Sample rate
+            '-ac', '1',  # Mono
+            str(output_path)
+        ]
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode == 0 and output_path.exists():
+            print(f"  Extracted audio: {output_path}")
+            return True
+        else:
+            print(f"  Warning: ffmpeg failed: {result.stderr[:200] if result.stderr else 'unknown error'}")
+            return False
+
+    except FileNotFoundError:
+        print("  Warning: ffmpeg not found. Install ffmpeg for audio extraction.")
+        return False
+    except subprocess.TimeoutExpired:
+        print("  Warning: ffmpeg timed out")
+        return False
+    except Exception as e:
+        print(f"  Warning: Audio extraction failed: {e}")
+        return False
+
+
 # ==============================================================================
 # Video Saving (Fixed overlap handling)
 # ==============================================================================
@@ -731,12 +786,12 @@ def main():
                         help="Number of samples to test")
     parser.add_argument("--output-dir", type=str, default="./joint-results",
                         help="Output directory")
-    parser.add_argument("--video-eps", type=float, default=0.1,
-                        help="Video perturbation budget")
-    parser.add_argument("--audio-eps", type=float, default=3.0,
-                        help="Audio perturbation budget (L2)")
-    parser.add_argument("--max-iter", type=int, default=50,
-                        help="Max iterations")
+    parser.add_argument("--video-eps", type=float, default=0.2,
+                        help="Video perturbation budget (default: 0.2)")
+    parser.add_argument("--audio-eps", type=float, default=5.0,
+                        help="Audio perturbation budget L2 (default: 5.0)")
+    parser.add_argument("--max-iter", type=int, default=100,
+                        help="Max iterations (default: 100)")
     parser.add_argument("--device", type=str, default="cuda")
 
     args = parser.parse_args()
@@ -780,12 +835,12 @@ def main():
         print(f"Audio shape: {target_audio.shape}")
 
         try:
-            # Run joint attack
+            # Run joint attack with aggressive hyperparameters
             joint_attack = JointAttack(
                 video_eps=args.video_eps,
                 audio_eps=args.audio_eps,
-                video_lr=0.01,
-                audio_step=0.5,
+                video_lr=0.02,      # Increased for stronger attack
+                audio_step=1.0,     # Increased for stronger attack
                 num_iterations=args.max_iter,
                 device=args.device
             )
@@ -802,8 +857,9 @@ def main():
             print(f"\nSaving to {sample_out}...")
 
             # Copy original video file
-            if 'target_path' in info and info['target_path'] and Path(info['target_path']).exists():
-                shutil.copy2(info['target_path'], sample_out / "original_video_file.mp4")
+            source_video_path = info.get('target_path')
+            if source_video_path and Path(source_video_path).exists():
+                shutil.copy2(source_video_path, sample_out / "original_video_file.mp4")
                 print(f"  Copied original video file")
 
             # Save processed videos
@@ -816,16 +872,24 @@ def main():
             # Save audio spectrograms
             save_audio_comparison(target_audio, adv_audio, sample_out / "audio_comparison.png")
 
-            # Save audio WAV files (if librosa available)
+            # Save audio WAV files
+            # ORIGINAL: Extract directly from video file (clean audio)
+            if source_video_path:
+                extract_audio_from_video(
+                    source_video_path,
+                    sample_out / "original_audio.wav",
+                    sample_rate=16000
+                )
+
+            # ADVERSARIAL: Use Griffin-Lim reconstruction (will sound noisy/robotic)
+            # This is expected - mel-spectrogram perturbations can't be perfectly inverted
             if HAVE_LIBROSA:
                 try:
-                    orig_wav = mel_spectrogram_to_audio(target_audio)
+                    print("  Note: Adversarial audio uses Griffin-Lim reconstruction (may sound robotic)")
                     adv_wav = mel_spectrogram_to_audio(adv_audio)
-
-                    save_audio_wav(orig_wav, sample_out / "original_audio.wav")
                     save_audio_wav(adv_wav, sample_out / "adversarial_audio.wav")
                 except Exception as e:
-                    print(f"  Warning: Audio WAV conversion failed: {e}")
+                    print(f"  Warning: Adversarial audio WAV conversion failed: {e}")
 
             # Save stats
             save_stats(attack_info, sample_out / "stats.txt")

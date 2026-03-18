@@ -727,10 +727,10 @@ def main():
                         help="Number of samples to test")
     parser.add_argument("--output-dir", type=str, default="./art-testing",
                         help="Output directory")
-    parser.add_argument("--eps", type=float, default=0.1,
-                        help="Perturbation budget")
-    parser.add_argument("--max-iter", type=int, default=50,
-                        help="Max iterations")
+    parser.add_argument("--eps", type=float, default=0.2,
+                        help="Perturbation budget (default: 0.2)")
+    parser.add_argument("--max-iter", type=int, default=100,
+                        help="Max iterations (default: 100)")
     parser.add_argument("--device", type=str, default="cuda")
 
     args = parser.parse_args()
@@ -776,7 +776,7 @@ def main():
                     flicker_freq=2.0,
                     spatial_freq=8,
                     num_iterations=args.max_iter,
-                    step_size=0.01,
+                    step_size=0.02,  # Increased from 0.01 for stronger attack
                     device=args.device
                 )
                 adv_video, attack_info = attack.attack(
