@@ -122,12 +122,12 @@ def demo_individual_attacks(model: nn.Module, device: str = 'cuda'):
         attacker = RefereeMultiModalPGD(
             model,
             attack_mode=mode,
-            eps_audio=0.1,        # Larger perturbation
-            eps_video=0.5,        # Larger perturbation
-            eps_step_audio=0.02,  # Larger step
-            eps_step_video=0.1,   # Larger step
-            max_iter=30,          # More iterations
-            temporal_weight=0.1,  # Lower temporal weight for stronger attacks
+            eps_audio=0.2,        # Even larger perturbation
+            eps_video=1.0,        # Even larger perturbation
+            eps_step_audio=0.05,  # Even larger step
+            eps_step_video=0.2,   # Even larger step
+            max_iter=50,          # More iterations
+            temporal_weight=0.01, # Much lower temporal weight for stronger attacks
             verbose=True
         )
 
@@ -306,9 +306,12 @@ def main():
                 # Handle both small and large input dimensions flexibly
 
                 self.classifier = nn.Sequential(
-                    nn.Linear(2, 64),      # Just 2 features: one from audio, one from video
+                    nn.Linear(2, 128),     # More complex classifier for better gradient flow
                     nn.ReLU(),
-                    nn.Dropout(0.2),
+                    nn.Dropout(0.1),
+                    nn.Linear(128, 64),
+                    nn.ReLU(),
+                    nn.Dropout(0.1),
                     nn.Linear(64, 32),
                     nn.ReLU(),
                     nn.Linear(32, 2)
@@ -329,14 +332,14 @@ def main():
                 # Combine features: (B, 2)
                 combined = torch.stack([audio_feat, video_feat], dim=1)
 
-                # Scale to make model sensitive to small changes
-                combined_scaled = combined * 50.0  # Amplify effects
+                # Scale much more aggressively to make model very sensitive to changes
+                combined_scaled = combined * 200.0  # Much stronger amplification
 
                 # Classification
                 logits_rf = self.classifier(combined_scaled)
 
-                # ID logits - similar but with noise
-                logits_id = self.classifier(combined_scaled * 0.7) + torch.randn(B, 2, device=target_vis.device) * 0.2
+                # ID logits - similar but with different scaling
+                logits_id = self.classifier(combined_scaled * 0.5) + torch.randn(B, 2, device=target_vis.device) * 0.1
 
                 return logits_rf, logits_id
 

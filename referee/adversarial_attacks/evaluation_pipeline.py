@@ -199,14 +199,14 @@ class RefereeAttackEvaluator:
             Dictionary with results for each attack mode
         """
         if base_config is None:
-            # Use more aggressive parameters to ensure attacks work
+            # Use very aggressive parameters to ensure attacks work
             base_config = {
-                'eps_audio': 0.1,         # Larger perturbation
-                'eps_video': 0.5,         # Larger perturbation
-                'eps_step_audio': 0.02,   # Larger step
-                'eps_step_video': 0.1,    # Larger step
-                'max_iter': 30,           # More iterations
-                'temporal_weight': 0.1    # Lower temporal weight for stronger attacks
+                'eps_audio': 0.2,         # Even larger perturbation
+                'eps_video': 1.0,         # Even larger perturbation
+                'eps_step_audio': 0.05,   # Even larger step
+                'eps_step_video': 0.2,    # Even larger step
+                'max_iter': 50,           # More iterations
+                'temporal_weight': 0.01   # Much lower temporal weight for stronger attacks
             }
 
         modes = ['audio', 'video', 'joint']

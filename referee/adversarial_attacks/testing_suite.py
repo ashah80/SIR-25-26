@@ -37,7 +37,7 @@ class RefereeAttackTester:
         self.referee_model = referee_model.eval()
         self.device = device
 
-    def create_dummy_batch(self, batch_size: int = 2) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    def create_dummy_batch(self, batch_size: int = 1) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Create dummy input tensors for testing.
 
@@ -60,18 +60,20 @@ class RefereeAttackTester:
         except RuntimeError as e:
             if "out of memory" in str(e).lower():
                 print("  ⚠️  GPU memory low, using smaller test tensors...")
-                # Fallback to smaller tensors
-                target_audio = torch.randn(batch_size, 4, 1, 32, 32, device=self.device)
-                ref_audio = torch.randn(batch_size, 4, 1, 32, 32, device=self.device)
-                target_video = torch.rand(batch_size, 4, 8, 3, 64, 64, device=self.device)
-                ref_video = torch.rand(batch_size, 4, 8, 3, 64, 64, device=self.device)
+                torch.cuda.empty_cache()  # Clean memory before retrying
+
+                # Fallback to much smaller tensors
+                target_audio = torch.randn(batch_size, 2, 1, 16, 16, device=self.device)
+                ref_audio = torch.randn(batch_size, 2, 1, 16, 16, device=self.device)
+                target_video = torch.rand(batch_size, 2, 4, 3, 32, 32, device=self.device)
+                ref_video = torch.rand(batch_size, 2, 4, 3, 32, 32, device=self.device)
                 labels_rf = torch.ones(batch_size, dtype=torch.long, device=self.device)
 
                 return target_audio, target_video, ref_audio, ref_video, labels_rf
             else:
                 raise e
 
-    def test_gradient_flow(self, batch_size: int = 2) -> Dict[str, bool]:
+    def test_gradient_flow(self, batch_size: int = 1) -> Dict[str, bool]:
         """
         Test that gradients flow correctly through the model architecture.
 
@@ -132,10 +134,21 @@ class RefereeAttackTester:
             self.referee_model.eval()
 
             print(f"  Gradient flow test: {'PASSED' if all(results.values()) else 'FAILED'}")
+
+            # Clean up memory
+            del target_audio, target_video, ref_audio, ref_video, labels_rf, loss, wrapper
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
             return results
 
         except Exception as e:
             print(f"  ❌ Gradient flow test failed with exception: {e}")
+
+            # Clean up memory on error too
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
             return {
                 'audio_gradients_exist': False,
                 'video_gradients_exist': False,
@@ -199,6 +212,13 @@ class RefereeAttackTester:
             print(f"  {status} {test_name}: {passed}")
 
         print(f"  Bounds test: {'PASSED' if all(results.values()) else 'FAILED'}")
+
+        # Clean up memory
+        del target_audio, target_video, ref_audio, ref_video, labels_rf
+        del adv_audio, adv_video, attacker, audio_delta, video_delta
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         return results
 
     def test_temporal_coherence(self, temporal_weight: float = 0.5) -> Dict[str, float]:
@@ -240,7 +260,8 @@ class RefereeAttackTester:
         # Compute temporal variance (lower is smoother)
         def compute_temporal_variance(audio, video):
             audio_var = torch.var(audio[:, :, :, :, 1:] - audio[:, :, :, :, :-1]).item()
-            video_var = torch.var(video[:, :, 1:] - video[:, :, :-1]).item()
+            # Fix video slicing to maintain all dimensions: (B, S, Tv, C, H, W)
+            video_var = torch.var(video[:, :, 1:, :, :, :] - video[:, :, :-1, :, :, :]).item()
             return audio_var, video_var
 
         audio_var_no_temp, video_var_no_temp = compute_temporal_variance(adv_audio_no_temp, adv_video_no_temp)
@@ -263,6 +284,13 @@ class RefereeAttackTester:
         improvement_video = "✓" if results['video_smoothness_improved'] else "✗"
         print(f"  {improvement_audio} Audio smoothness improved")
         print(f"  {improvement_video} Video smoothness improved")
+
+        # Clean up memory
+        del target_audio, target_video, ref_audio, ref_video, labels_rf
+        del adv_audio_no_temp, adv_video_no_temp, adv_audio_with_temp, adv_video_with_temp
+        del attacker_no_temp, attacker_with_temp
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
         return results
 

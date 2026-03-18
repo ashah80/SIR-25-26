@@ -289,13 +289,17 @@ class RefereeMultiModalPGD:
 
         if self.attack_mode in ['audio', 'joint']:
             # Audio temporal smoothness (across time frames)
-            diff = adv_audio[:, :, :, :, 1:] - adv_audio[:, :, :, :, :-1]
-            temporal_loss += torch.mean(diff ** 2)
+            # Audio shape: (B, S, 1, F, Ta) - smooth across Ta (time frames)
+            if adv_audio.shape[-1] > 1:  # Only if we have multiple time frames
+                diff = adv_audio[:, :, :, :, 1:] - adv_audio[:, :, :, :, :-1]
+                temporal_loss += torch.mean(diff ** 2)
 
         if self.attack_mode in ['video', 'joint']:
-            # Video temporal smoothness (across frames)
-            diff = adv_video[:, :, 1:] - adv_video[:, :, :-1]
-            temporal_loss += torch.mean(diff ** 2)
+            # Video temporal smoothness (across frames per segment)
+            # Video shape: (B, S, Tv, C, H, W) - smooth across Tv (frames per segment)
+            if adv_video.shape[2] > 1:  # Only if we have multiple frames per segment
+                diff = adv_video[:, :, 1:, :, :, :] - adv_video[:, :, :-1, :, :, :]
+                temporal_loss += torch.mean(diff ** 2)
 
         return temporal_loss
 
