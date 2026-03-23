@@ -53,15 +53,12 @@ except ImportError:
     print("Install with: pip install librosa soundfile")
 
 
-# ==============================================================================
 # Video Flickering Attack (FIXED)
-# ==============================================================================
 
 class VideoFlickeringAttack(nn.Module):
     """
     Temporally consistent video perturbation using learnable basis patterns.
-
-    FIXED: Uses nn.Parameter to ensure leaf tensors for optimization.
+    Uses nn.Parameter to ensure leaf tensors for optimization.
     """
 
     def __init__(
@@ -132,9 +129,7 @@ class VideoFlickeringAttack(nn.Module):
         return perturbation.unsqueeze(0)  # (1, S, T, C, H, W)
 
 
-# ==============================================================================
 # Audio PGD Attack
-# ==============================================================================
 
 class AudioPGDAttack:
     """
@@ -255,9 +250,7 @@ class AudioPGDAttack:
         return best_adv, info
 
 
-# ==============================================================================
 # Joint Attack (Video + Audio)
-# ==============================================================================
 
 class JointAttack:
     """
@@ -448,9 +441,7 @@ class JointAttack:
         return best_adv_video, best_adv_audio, info
 
 
-# ==============================================================================
 # Audio Reconstruction (Mel-spectrogram -> WAV)
-# ==============================================================================
 
 def mel_spectrogram_to_audio(
     mel_spec: torch.Tensor,
@@ -589,9 +580,7 @@ def extract_audio_from_video(video_path: str, output_path: Path, sample_rate: in
         return False
 
 
-# ==============================================================================
 # Video Saving (Fixed overlap handling)
-# ==============================================================================
 
 def save_video_mp4(
     video_tensor: torch.Tensor,
@@ -643,9 +632,7 @@ def save_video_mp4(
     print(f"  Saved video ({len(frames)} frames): {save_path}")
 
 
-# ==============================================================================
 # Visualization
-# ==============================================================================
 
 def save_comparison(orig_video, adv_video, save_path: Path, num_frames: int = 8):
     """Save video frame comparison."""
@@ -740,9 +727,7 @@ def save_stats(info: Dict, save_path: Path):
     print(f"  Saved stats: {save_path}")
 
 
-# ==============================================================================
 # Model and Data Loading
-# ==============================================================================
 
 def load_model(device: str = 'cuda'):
     """Load Referee model."""
@@ -788,9 +773,7 @@ def load_sample(dataset, idx: int, device: str):
     )
 
 
-# ==============================================================================
 # Main
-# ==============================================================================
 
 def main():
     parser = argparse.ArgumentParser(description="Joint Video+Audio Adversarial Attack")

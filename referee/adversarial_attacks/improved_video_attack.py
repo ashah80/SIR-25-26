@@ -48,9 +48,7 @@ except ImportError:
     HAVE_ART = False
 
 
-# ==============================================================================
-# Fixed Video Saving (handles overlapping segments)
-# ==============================================================================
+# Video Saving (handles overlapping segments)
 
 def save_video_non_overlapping(
     video_tensor: torch.Tensor,
@@ -128,9 +126,7 @@ def save_video_non_overlapping(
     print(f"  Saved video ({len(frames)} frames): {save_path}")
 
 
-# ==============================================================================
 # Over-the-Air Flickering Attack
-# ==============================================================================
 
 class FlickeringAttack:
     """
@@ -247,7 +243,7 @@ class FlickeringAttack:
         S, T, C, H, W = shape
 
         # Learnable spatial basis patterns (small, tiled)
-        # FIXED: Create tensor first, then set requires_grad to ensure leaf tensors
+        # Create tensor first, then set requires_grad to ensure leaf tensors
         basis_size = max(W // self.spatial_freq, 16)
         basis_patterns = torch.randn(
             self.num_basis, C, basis_size, basis_size,
@@ -439,9 +435,7 @@ class FlickeringAttack:
         return best_adv, info
 
 
-# ==============================================================================
 # Improved ART Attack with Temporal Consistency
-# ==============================================================================
 
 class TemporallyConsistentARTWrapper(nn.Module):
     """
@@ -613,9 +607,7 @@ def run_improved_art_attack(
     return adv_video, info
 
 
-# ==============================================================================
 # Model and Data Loading
-# ==============================================================================
 
 def load_model(device: str = 'cuda'):
     """Load Referee model."""
@@ -661,9 +653,7 @@ def load_sample(dataset, idx: int, device: str):
     )
 
 
-# ==============================================================================
 # Visualization
-# ==============================================================================
 
 def save_comparison(orig_video, adv_video, save_path: Path, num_frames: int = 8):
     """Save frame comparison visualization."""
@@ -721,9 +711,7 @@ def save_stats(info: Dict, save_path: Path):
     print(f"  Saved stats: {save_path}")
 
 
-# ==============================================================================
 # Main
-# ==============================================================================
 
 def main():
     parser = argparse.ArgumentParser(description="Improved video attacks")

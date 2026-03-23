@@ -105,10 +105,7 @@ class RefereeMultiModalPGD:
         """
         Generate adversarial examples using PGD.
 
-        For UNTARGETED attacks on FAKE samples (label=1):
-        - Goal: Make model classify fake as real
-        - Method: MAXIMIZE cross-entropy loss with true label
-        - Implementation: Gradient ASCENT (add gradients to input)
+        For untargeted attacks on fake samples (label=1): Gradient ascent 
 
         Args:
             target_audio: Original target audio (B, S, 1, F, Ta)
@@ -196,7 +193,7 @@ class RefereeMultiModalPGD:
                 grad_audio = adv_audio.grad if adv_audio.requires_grad else None
                 grad_video = adv_video.grad if adv_video.requires_grad else None
 
-                # Update perturbations using gradient ASCENT for untargeted attacks
+                # Update perturbations using gradient ascent for untargeted attacks
                 with torch.no_grad():
                     if self.attack_mode in ['audio', 'joint'] and grad_audio is not None:
                         # Normalize gradient (use reshape for non-contiguous tensors)

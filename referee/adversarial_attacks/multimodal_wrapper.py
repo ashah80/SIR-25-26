@@ -96,7 +96,7 @@ class RefereeAttackWrapper(nn.Module):
     """
     Wrapper around the Referee model to enable adversarial attacks.
 
-    This wrapper:
+    This code:
     1. Holds fixed reference audio/video pairs
     2. Takes only target audio/video as input (for attacking)
     3. Provides clean loss computation for gradient-based attacks
@@ -116,7 +116,7 @@ class RefereeAttackWrapper(nn.Module):
         # Will be set when preparing for attack
         self.ref_audio = None
         self.ref_video = None
-        self.attack_labels = None  # Expected ground truth labels for loss computation
+        self.attack_labels = None 
 
     def set_reference_pair(self, ref_audio: torch.Tensor, ref_video: torch.Tensor):
         """
@@ -167,7 +167,7 @@ class RefereeAttackWrapper(nn.Module):
                 ref_aud=self.ref_audio
             )
 
-            # Compute RF loss only (this is what we want to attack)
+            # Compute RF loss only (this is what to attack)
             loss_rf = torch.nn.functional.cross_entropy(logits_rf, self.attack_labels)
 
         finally:
