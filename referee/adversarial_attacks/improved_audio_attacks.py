@@ -183,33 +183,50 @@ class ImprovedPsychoacousticAttack:
     - No reconstruction artifacts
     - Gradients flow: loss -> mel_transform -> waveform
 
-    IMPROVEMENTS OVER BASIC VERSION:
-    ================================
-    1. Momentum-based optimization (more stable convergence)
-    2. Adaptive step size (starts aggressive, becomes conservative)
-    3. Better masking model (combines energy + spectral flatness)
-    4. Focus on active region only (the part model actually sees)
-    5. Frequency-aware perturbation (prefer mid-frequencies humans hear less)
+    QUALITY VS EFFECTIVENESS TRADE-OFF:
+    ====================================
+    Use these parameters to balance:
+    - target_snr_db: Higher = better quality, lower effectiveness
+    - snr_weight: Higher = prioritize quality over effectiveness
+    - masking_strength: Lower = more uniform perturbation (higher quality)
+    - eps: Lower = less perturbation overall
+
+    PRESETS:
+    ========
+    Quality mode:   eps=0.08, target_snr_db=40, snr_weight=0.3, masking_strength=0.3
+    Balanced mode:  eps=0.15, target_snr_db=35, snr_weight=0.1, masking_strength=0.5
+    Effective mode: eps=0.30, target_snr_db=25, snr_weight=0.0, masking_strength=0.8
     """
 
     def __init__(
         self,
         model: nn.Module,
-        eps: float = 0.3,           # Max perturbation (higher = more effective but audible)
-        step_size: float = 0.02,    # Initial step size
-        num_iterations: int = 300,  # More iterations for better convergence
-        momentum: float = 0.9,      # Momentum for stable optimization
-        adaptive_step: bool = True, # Reduce step size over time
+        eps: float = 0.15,          # Max perturbation (0.05-0.3 range)
+        step_size: float = 0.01,    # Initial step size
+        num_iterations: int = 300,  # Attack iterations
+        momentum: float = 0.9,      # Momentum coefficient
+        adaptive_step: bool = True, # Decay step size over time
+        target_snr_db: float = 35.0, # Target SNR (higher = better quality)
+        snr_weight: float = 0.1,    # SNR regularization weight (0-1)
+        masking_strength: float = 0.5, # Masking curve strength (0-1)
         device: str = 'cuda'
     ):
         """
         Args:
             model: Referee model
-            eps: Maximum L-inf perturbation (0.1-0.5 range, higher = more effective)
+            eps: Maximum L-inf perturbation (0.05-0.3 recommended)
             step_size: Initial PGD step size
             num_iterations: Attack iterations (200-500 recommended)
             momentum: Momentum coefficient (0.9 typical)
             adaptive_step: Whether to decay step size
+            target_snr_db: Target SNR in dB (30-45 range)
+                           Higher = better audio quality but less effective attack
+            snr_weight: How much to penalize low SNR (0-1)
+                        0 = ignore SNR, maximize effectiveness
+                        1 = strongly prioritize audio quality
+            masking_strength: How much masking curve affects epsilon (0-1)
+                              0 = uniform epsilon everywhere (better quality)
+                              1 = full masking (loud areas perturbed more)
             device: cuda/cpu
         """
         self.model = model
@@ -218,6 +235,9 @@ class ImprovedPsychoacousticAttack:
         self.num_iterations = num_iterations
         self.momentum = momentum
         self.adaptive_step = adaptive_step
+        self.target_snr_db = target_snr_db
+        self.snr_weight = snr_weight
+        self.masking_strength = masking_strength
         self.device = device
 
         self.mel_transform = DifferentiableMelTransform(device=device).to(device)
@@ -303,11 +323,16 @@ class ImprovedPsychoacousticAttack:
         if verbose:
             print(f"  Audio: {T} samples ({T/16000:.2f}s)")
             print(f"  Active region: [{active_start}:{active_end}] ({(active_end-active_start)/16000:.2f}s)")
-            print(f"  Attack: eps={self.eps}, iters={self.num_iterations}, momentum={self.momentum}")
+            print(f"  Attack: eps={self.eps}, target_snr={self.target_snr_db}dB, snr_weight={self.snr_weight}")
+            print(f"  Masking strength: {self.masking_strength}, iterations: {self.num_iterations}")
 
         # Compute masking curve
         with torch.no_grad():
-            masking_curve = self.compute_masking_curve(orig_waveform)
+            raw_masking_curve = self.compute_masking_curve(orig_waveform)
+            # Apply masking strength: interpolate between uniform (1.0) and full masking
+            # masking_strength=0 -> uniform eps everywhere
+            # masking_strength=1 -> full masking curve
+            masking_curve = 1.0 - self.masking_strength * (1.0 - raw_masking_curve)
             # Zero out masking outside active region
             masking_curve[:, :active_start] = 0
             masking_curve[:, active_end:] = 0
@@ -348,7 +373,21 @@ class ImprovedPsychoacousticAttack:
 
             # Loss: we want to MAXIMIZE cross-entropy (fool the classifier)
             # For fake samples (label=1), maximizing CE means pushing toward real (class 0)
-            loss = F.cross_entropy(logits, labels)
+            classification_loss = F.cross_entropy(logits, labels)
+
+            # SNR regularization: penalize low SNR (high perturbation energy)
+            # Higher snr_weight = prioritize audio quality over attack effectiveness
+            if self.snr_weight > 0:
+                active_delta = delta[:, active_start:active_end]
+                active_orig = orig_waveform[:, active_start:active_end]
+                signal_power = torch.sum(active_orig ** 2)
+                noise_power = torch.sum(active_delta ** 2) + 1e-10
+                current_snr = 10 * torch.log10(signal_power / noise_power)
+                # Penalize if SNR is below target
+                snr_penalty = F.relu(self.target_snr_db - current_snr)
+                loss = classification_loss - self.snr_weight * snr_penalty
+            else:
+                loss = classification_loss
 
             # Backward
             self.model.zero_grad()
@@ -426,6 +465,9 @@ class ImprovedPsychoacousticAttack:
             'perturbation_l2': l2_norm,
             'perturbation_snr_db': snr,
             'eps': self.eps,
+            'target_snr_db': self.target_snr_db,
+            'snr_weight': self.snr_weight,
+            'masking_strength': self.masking_strength,
             'num_iterations': self.num_iterations,
             'momentum': self.momentum,
             'attack_time_seconds': attack_time,
@@ -638,19 +680,49 @@ def main():
                         help="Attack method")
     parser.add_argument("--num-samples", type=int, default=5)
     parser.add_argument("--output-dir", type=str, default="./improved-audio-results")
-    parser.add_argument("--eps", type=float, default=0.3,
-                        help="Perturbation budget (0.2-0.5 for waveform, 2-5 for mel)")
+    parser.add_argument("--eps", type=float, default=0.15,
+                        help="Perturbation budget (0.05-0.3 for waveform)")
     parser.add_argument("--max-iter", type=int, default=300)
+    parser.add_argument("--target-snr", type=float, default=35.0,
+                        help="Target SNR in dB (higher = better quality, 30-45 range)")
+    parser.add_argument("--snr-weight", type=float, default=0.1,
+                        help="SNR regularization weight (0-1, higher = prioritize quality)")
+    parser.add_argument("--masking-strength", type=float, default=0.5,
+                        help="Masking curve strength (0-1, lower = better quality)")
+    parser.add_argument("--preset", type=str, default=None,
+                        choices=["quality", "balanced", "effective"],
+                        help="Use a preset configuration")
     parser.add_argument("--device", type=str, default="cuda")
 
     args = parser.parse_args()
+
+    # Apply presets if specified
+    if args.preset == "quality":
+        args.eps = 0.08
+        args.target_snr = 40.0
+        args.snr_weight = 0.3
+        args.masking_strength = 0.3
+        print("Using QUALITY preset: prioritizes audio quality over effectiveness")
+    elif args.preset == "balanced":
+        args.eps = 0.15
+        args.target_snr = 35.0
+        args.snr_weight = 0.1
+        args.masking_strength = 0.5
+        print("Using BALANCED preset: balanced quality and effectiveness")
+    elif args.preset == "effective":
+        args.eps = 0.30
+        args.target_snr = 25.0
+        args.snr_weight = 0.0
+        args.masking_strength = 0.8
+        print("Using EFFECTIVE preset: prioritizes attack effectiveness")
 
     print("=" * 70)
     print("Improved Audio Adversarial Attacks")
     print("=" * 70)
     print()
     print(f"Method: {args.method}")
-    print(f"Eps: {args.eps}, Max iterations: {args.max_iter}")
+    print(f"Eps: {args.eps}, Target SNR: {args.target_snr}dB, SNR weight: {args.snr_weight}")
+    print(f"Masking strength: {args.masking_strength}, Max iterations: {args.max_iter}")
     print()
 
     output_path = Path(args.output_dir)
@@ -700,6 +772,9 @@ def main():
                     model=model,
                     eps=args.eps,
                     num_iterations=args.max_iter,
+                    target_snr_db=args.target_snr,
+                    snr_weight=args.snr_weight,
+                    masking_strength=args.masking_strength,
                     device=args.device
                 )
 
