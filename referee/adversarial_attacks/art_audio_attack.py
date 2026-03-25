@@ -621,11 +621,9 @@ def main():
                         help="Attack method to use")
     parser.add_argument("--num-samples", type=int, default=3)
     parser.add_argument("--output-dir", type=str, default="./art-audio-results")
-    parser.add_argument("--eps", type=float, default=0.03)
-    parser.add_argument("--max-iter", type=int, default=100)
+    parser.add_argument("--eps", type=float, default=0.2)
+    parser.add_argument("--max-iter", type=int, default=200)
     parser.add_argument("--device", type=str, default="cuda")
-
-    args = parser.parse_args()
 
     print("=" * 70)
     print("Audio Attack Library Wrapper")
