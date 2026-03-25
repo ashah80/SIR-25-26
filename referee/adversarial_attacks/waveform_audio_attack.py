@@ -1,5 +1,5 @@
 """
-Waveform-Space Audio Attack for Referee Model
+Waveform-Space Audio Attack for Referee Model (FIXED)
 
 This module implements adversarial audio attacks that operate in the WAVEFORM domain
 rather than the mel-spectrogram domain. This solves the reconstruction problem because:
@@ -8,24 +8,14 @@ rather than the mel-spectrogram domain. This solves the reconstruction problem b
 2. The mel-spectrogram is computed on-the-fly during the forward pass
 3. No inverse transformation is needed - the adversarial audio IS the output
 
-The key insight is that we can still compute gradients through the mel-spectrogram
-transformation (torchaudio's MelSpectrogram is differentiable), so we can:
-    1. Start with original waveform
-    2. Add perturbation to waveform
-    3. Compute mel-spectrogram (differentiable)
-    4. Forward through model
-    5. Backprop gradient through mel-spectrogram to waveform
-    6. Update perturbation
-
-This produces adversarial audio that:
-    - Sounds identical to original (within perturbation budget)
-    - Is directly playable as WAV
-    - Actually fools the model
+FIXES from v1:
+- Only perturb samples that are actually used by the model (center segment region)
+- Use smooth L2-normalized gradients instead of harsh sign() updates
+- Add low-pass filtering to make perturbations more imperceptible
+- Proper gradient masking to avoid static artifacts
 
 Usage:
     python waveform_audio_attack.py --num-samples 3 --output-dir ./waveform-attack-results
-
-Author: Adversarial Research Framework
 """
 
 import sys
@@ -38,6 +28,7 @@ import numpy as np
 from typing import Tuple, Optional, Dict, Any
 import argparse
 import time
+import math
 
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.append(str(PROJECT_ROOT))
@@ -55,6 +46,7 @@ class DifferentiableMelSpectrogram(nn.Module):
     Differentiable mel-spectrogram transform that matches Referee's preprocessing.
 
     This allows gradients to flow from mel-spectrogram loss back to waveform.
+    Also returns the active region mask so we know which samples affect the model.
     """
 
     def __init__(
@@ -97,6 +89,75 @@ class DifferentiableMelSpectrogram(nn.Module):
             n_mels=n_mels,
         )
 
+        # Store last computed active region for masking
+        self.last_active_start = 0
+        self.last_active_end = 0
+
+    def get_active_region(self, T: int) -> Tuple[int, int]:
+        """
+        Calculate the sample indices that are actually used by the model.
+
+        Args:
+            T: Total waveform length
+
+        Returns:
+            (start_idx, end_idx): The range of samples used
+        """
+        # Calculate required length
+        required_len = (self.n_segments - 1) * self.stride_aframes + self.seg_size_aframes
+
+        # Pad simulation
+        padded_T = max(T, required_len)
+
+        # Center crop calculation (same as forward)
+        seg_seq_len = self.n_segments * self.step_size_seg + (1 - self.step_size_seg)
+        aframes_seg_seq_len = int(seg_seq_len * self.seg_size_aframes)
+        max_a_start = max(padded_T - aframes_seg_seq_len, 0)
+        a_start = max_a_start // 2
+
+        # End position: last segment start + segment size
+        a_end = a_start + (self.n_segments - 1) * self.stride_aframes + self.seg_size_aframes
+
+        return a_start, min(a_end, T)
+
+    def create_importance_mask(self, T: int, device: torch.device) -> torch.Tensor:
+        """
+        Create a smooth importance mask based on how many segments use each sample.
+
+        Samples used by more segments get higher weight (more important for attack).
+        This creates smooth transitions at boundaries instead of harsh edges.
+
+        Args:
+            T: Total waveform length
+            device: Device for the mask tensor
+
+        Returns:
+            mask: (T,) tensor with importance weights [0, 1]
+        """
+        mask = torch.zeros(T, device=device)
+
+        # Calculate positions
+        required_len = (self.n_segments - 1) * self.stride_aframes + self.seg_size_aframes
+        padded_T = max(T, required_len)
+
+        seg_seq_len = self.n_segments * self.step_size_seg + (1 - self.step_size_seg)
+        aframes_seg_seq_len = int(seg_seq_len * self.seg_size_aframes)
+        max_a_start = max(padded_T - aframes_seg_seq_len, 0)
+        a_start = max_a_start // 2
+
+        # Count how many segments use each sample
+        for s in range(self.n_segments):
+            start = a_start + s * self.stride_aframes
+            end = min(start + self.seg_size_aframes, T)
+            if start < T:
+                mask[start:end] += 1.0
+
+        # Normalize to [0, 1]
+        if mask.max() > 0:
+            mask = mask / mask.max()
+
+        return mask
+
     def forward(self, waveform: torch.Tensor) -> torch.Tensor:
         """
         Convert waveform to normalized mel-spectrogram in model format.
@@ -124,6 +185,10 @@ class DifferentiableMelSpectrogram(nn.Module):
         aframes_seg_seq_len = int(seg_seq_len * self.seg_size_aframes)
         max_a_start = max(T - aframes_seg_seq_len, 0)
         a_start = max_a_start // 2
+
+        # Store active region
+        self.last_active_start = a_start
+        self.last_active_end = a_start + (self.n_segments - 1) * self.stride_aframes + self.seg_size_aframes
 
         # Extract segments
         segments = []
@@ -165,9 +230,55 @@ class DifferentiableMelSpectrogram(nn.Module):
         return mel
 
 
+def lowpass_filter(x: torch.Tensor, cutoff_ratio: float = 0.3) -> torch.Tensor:
+    """
+    Apply a simple low-pass filter to smooth perturbations.
+
+    This makes perturbations less audible by removing high-frequency components.
+
+    Args:
+        x: (B, T) waveform or perturbation
+        cutoff_ratio: Fraction of Nyquist frequency to keep (0.3 = keep low 30%)
+
+    Returns:
+        filtered: (B, T) low-pass filtered signal
+    """
+    B, T = x.shape
+
+    # FFT
+    X = torch.fft.rfft(x, dim=1)
+
+    # Create frequency mask
+    n_freqs = X.shape[1]
+    cutoff = int(n_freqs * cutoff_ratio)
+
+    # Smooth transition (raised cosine)
+    mask = torch.ones(n_freqs, device=x.device)
+    transition_width = max(int(n_freqs * 0.1), 1)
+    for i in range(transition_width):
+        idx = cutoff + i
+        if idx < n_freqs:
+            mask[idx] = 0.5 * (1 + math.cos(math.pi * i / transition_width))
+    mask[cutoff + transition_width:] = 0
+
+    # Apply mask
+    X_filtered = X * mask.unsqueeze(0)
+
+    # Inverse FFT
+    x_filtered = torch.fft.irfft(X_filtered, n=T, dim=1)
+
+    return x_filtered
+
+
 class WaveformAudioAttack:
     """
-    PGD attack on audio in waveform space.
+    PGD attack on audio in waveform space (FIXED VERSION).
+
+    Key fixes from v1:
+    1. Only perturb samples in the active region (used by model)
+    2. Use smooth L2-normalized gradients instead of harsh sign()
+    3. Apply importance masking based on segment overlap
+    4. Optional low-pass filtering for imperceptibility
 
     Key advantages over mel-spectrogram space attacks:
     1. No lossy reconstruction needed
@@ -179,10 +290,11 @@ class WaveformAudioAttack:
         self,
         model: nn.Module,
         eps: float = 0.01,  # L-inf perturbation budget (max amplitude change)
-        eps_l2: float = None,  # Optional L2 budget
-        step_size: float = 0.001,
+        step_size: float = 0.002,
         num_iterations: int = 100,
-        targeted: bool = False,
+        use_lowpass: bool = True,
+        lowpass_cutoff: float = 0.5,
+        use_smooth_grad: bool = True,
         device: str = 'cuda',
     ):
         """
@@ -190,19 +302,21 @@ class WaveformAudioAttack:
             model: Referee model
             eps: L-inf perturbation bound (max per-sample amplitude change)
                  0.01 = 1% of max amplitude, usually inaudible
-                 0.05 = 5% of max amplitude, subtle
-            eps_l2: Optional L2 norm budget (alternative to L-inf)
+                 0.03 = 3% of max amplitude, subtle
             step_size: PGD step size
             num_iterations: Number of attack iterations
-            targeted: Whether to do targeted attack
+            use_lowpass: Apply low-pass filter to perturbation (more imperceptible)
+            lowpass_cutoff: Cutoff ratio for low-pass filter (0.5 = keep low 50%)
+            use_smooth_grad: Use L2-normalized grads instead of sign() (smoother)
             device: Device to use
         """
         self.model = model
         self.eps = eps
-        self.eps_l2 = eps_l2
         self.step_size = step_size
         self.num_iterations = num_iterations
-        self.targeted = targeted
+        self.use_lowpass = use_lowpass
+        self.lowpass_cutoff = lowpass_cutoff
+        self.use_smooth_grad = use_smooth_grad
         self.device = device
 
         # Create differentiable mel-spectrogram transform
@@ -233,9 +347,23 @@ class WaveformAudioAttack:
         """
         self.model.eval()
 
-        # Initialize perturbation
-        delta = torch.zeros_like(original_waveform, requires_grad=True)
+        B, T = original_waveform.shape
         orig_waveform = original_waveform.clone().detach()
+
+        # Get importance mask - samples used by more segments are more important
+        importance_mask = self.mel_transform.create_importance_mask(T, self.device)
+        importance_mask = importance_mask.unsqueeze(0).expand(B, -1)  # (B, T)
+
+        # Get active region (the center portion that's actually used)
+        active_start, active_end = self.mel_transform.get_active_region(T)
+
+        if verbose:
+            print(f"  Audio length: {T} samples ({T/16000:.2f}s)")
+            print(f"  Active region: [{active_start}, {active_end}] ({(active_end-active_start)/16000:.2f}s)")
+            print(f"  Inactive: first {active_start/16000:.2f}s, last {(T-active_end)/16000:.2f}s")
+
+        # Initialize perturbation (only for active region)
+        delta = torch.zeros_like(original_waveform, requires_grad=True)
 
         # Get initial prediction
         with torch.no_grad():
@@ -266,8 +394,7 @@ class WaveformAudioAttack:
             logits = self.model(target_video, adv_mel, ref_video, ref_audio)[0]
             probs = F.softmax(logits, dim=1)
 
-            # Loss: we want to maximize real probability (minimize loss for real class)
-            # For untargeted attack on fake sample: maximize CE loss
+            # Loss: maximize real probability (fool the fake classifier)
             loss = F.cross_entropy(logits, labels)
 
             # Backward
@@ -277,22 +404,30 @@ class WaveformAudioAttack:
             # Get gradient
             grad = delta.grad.detach()
 
-            # PGD update (gradient ascent for untargeted)
+            # Apply importance mask to gradient (focus on active region)
+            grad = grad * importance_mask
+
+            # Update perturbation
             with torch.no_grad():
-                if self.targeted:
-                    delta = delta - self.step_size * grad.sign()
+                if self.use_smooth_grad:
+                    # Smooth L2-normalized update (less harsh than sign)
+                    grad_norm = torch.norm(grad, dim=1, keepdim=True) + 1e-10
+                    grad_normalized = grad / grad_norm
+                    delta = delta + self.step_size * grad_normalized
                 else:
-                    delta = delta + self.step_size * grad.sign()  # FGSM-style step
+                    # Standard FGSM-style sign update
+                    delta = delta + self.step_size * grad.sign()
+
+                # Apply low-pass filter to make perturbation less audible
+                if self.use_lowpass:
+                    delta = lowpass_filter(delta, self.lowpass_cutoff)
 
                 # Project to L-inf ball
                 delta = torch.clamp(delta, -self.eps, self.eps)
 
-                # Optionally project to L2 ball
-                if self.eps_l2 is not None:
-                    delta_flat = delta.view(delta.size(0), -1)
-                    delta_norm = torch.norm(delta_flat, dim=1, keepdim=True)
-                    factor = torch.clamp(self.eps_l2 / (delta_norm + 1e-10), max=1.0)
-                    delta = (delta_flat * factor).view_as(delta)
+                # Zero out perturbation outside active region (clean boundaries)
+                delta[:, :active_start] = 0
+                delta[:, active_end:] = 0
 
                 # Ensure valid audio range [-1, 1]
                 adv_waveform = torch.clamp(orig_waveform + delta, -1.0, 1.0)
@@ -332,12 +467,16 @@ class WaveformAudioAttack:
         delta_final = adv_waveform - orig_waveform
         linf_norm = torch.max(torch.abs(delta_final)).item()
         l2_norm = torch.norm(delta_final).item()
+
+        # SNR only for active region
+        active_orig = orig_waveform[:, active_start:active_end]
+        active_delta = delta_final[:, active_start:active_end]
         snr = 10 * torch.log10(
-            torch.sum(orig_waveform ** 2) / (torch.sum(delta_final ** 2) + 1e-10)
+            torch.sum(active_orig ** 2) / (torch.sum(active_delta ** 2) + 1e-10)
         ).item()
 
         info = {
-            'method': 'WaveformPGD',
+            'method': 'WaveformPGD_v2_fixed',
             'original_real_prob': orig_real_prob,
             'original_fake_prob': orig_fake_prob,
             'adversarial_real_prob': final_real_prob,
@@ -349,6 +488,9 @@ class WaveformAudioAttack:
             'perturbation_snr_db': snr,
             'eps': self.eps,
             'num_iterations': self.num_iterations,
+            'active_region_start': active_start,
+            'active_region_end': active_end,
+            'use_lowpass': self.use_lowpass,
             'attack_time_seconds': attack_time,
         }
 
@@ -416,23 +558,34 @@ def load_model(device: str = 'cuda'):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Waveform-space audio adversarial attack")
+    parser = argparse.ArgumentParser(description="Waveform-space audio adversarial attack (FIXED)")
     parser.add_argument("--num-samples", type=int, default=3)
     parser.add_argument("--output-dir", type=str, default="./waveform-attack-results")
-    parser.add_argument("--eps", type=float, default=0.02,
-                        help="L-inf perturbation budget (0.01-0.05 typical)")
+    parser.add_argument("--eps", type=float, default=0.03,
+                        help="L-inf perturbation budget (0.01-0.05 typical, default 0.03)")
     parser.add_argument("--max-iter", type=int, default=100)
-    parser.add_argument("--step-size", type=float, default=0.002)
+    parser.add_argument("--step-size", type=float, default=0.003)
+    parser.add_argument("--no-lowpass", action="store_true",
+                        help="Disable low-pass filtering (perturbation will be more audible)")
+    parser.add_argument("--lowpass-cutoff", type=float, default=0.5,
+                        help="Low-pass filter cutoff ratio (0.3-0.7, lower = smoother)")
+    parser.add_argument("--use-sign-grad", action="store_true",
+                        help="Use sign(grad) instead of normalized grad (more aggressive)")
     parser.add_argument("--device", type=str, default="cuda")
 
     args = parser.parse_args()
 
     print("=" * 70)
-    print("Waveform-Space Audio Adversarial Attack")
+    print("Waveform-Space Audio Adversarial Attack (FIXED v2)")
     print("=" * 70)
     print()
-    print("This attack operates in WAVEFORM space, not mel-spectrogram space.")
-    print("The adversarial audio is directly playable with NO reconstruction artifacts!")
+    print("FIXES from v1:")
+    print("  - Only perturbs samples in the active region (used by model)")
+    print("  - Uses smooth L2-normalized gradients (not harsh sign())")
+    print("  - Applies low-pass filtering for imperceptibility")
+    print("  - Clean boundaries (no static at beginning/end)")
+    print()
+    print(f"Settings: eps={args.eps}, lowpass={'disabled' if args.no_lowpass else f'cutoff={args.lowpass_cutoff}'}")
     print()
 
     output_path = Path(args.output_dir)
@@ -494,12 +647,15 @@ def main():
             # Convert to tensor
             waveform_tensor = torch.from_numpy(original_waveform).float().unsqueeze(0).to(args.device)
 
-            # Run waveform attack
+            # Run waveform attack (FIXED version)
             attack = WaveformAudioAttack(
                 model=model,
                 eps=args.eps,
                 step_size=args.step_size,
                 num_iterations=args.max_iter,
+                use_lowpass=not args.no_lowpass,
+                lowpass_cutoff=args.lowpass_cutoff,
+                use_smooth_grad=not args.use_sign_grad,
                 device=args.device
             )
 
@@ -583,6 +739,7 @@ def main():
     print()
     print("KEY ADVANTAGE: Adversarial audio files are DIRECTLY PLAYABLE!")
     print("No Griffin-Lim reconstruction needed. No robotic artifacts.")
+    print("Beginning/end of audio stay clean (only active region is perturbed).")
     print()
     print(f"Outputs saved to: {output_path.absolute()}")
 
