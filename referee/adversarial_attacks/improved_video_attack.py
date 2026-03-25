@@ -722,19 +722,19 @@ def main():
                         help="Number of samples to test")
     parser.add_argument("--output-dir", type=str, default="./art-testing",
                         help="Output directory")
-    parser.add_argument("--eps", type=float, default=0.2,
+    parser.add_argument("--eps", type=float, default=0.05,
                         help="Perturbation budget (default: 0.2)")
-    parser.add_argument("--max-iter", type=int, default=100,
+    parser.add_argument("--max-iter", type=int, default=200,
                         help="Max iterations (default: 100)")
-    parser.add_argument("--flicker-freq", type=float, default=5.0,
+    parser.add_argument("--flicker-freq", type=float, default=2.5,
                         help="Temporal flicker frequency in Hz (default: 5.0, higher = faster flicker)")
-    parser.add_argument("--spatial-freq", type=int, default=4,
+    parser.add_argument("--spatial-freq", type=int, default=8,
                         help="Spatial pattern frequency (default: 4, lower = larger patterns = more effective)")
-    parser.add_argument("--num-basis", type=int, default=8,
+    parser.add_argument("--num-basis", type=int, default=4,
                         help="Number of basis patterns (default: 8, more = more expressive)")
-    parser.add_argument("--smoothness-weight", type=float, default=1.0,
+    parser.add_argument("--smoothness-weight", type=float, default=2.0,
                         help="Temporal smoothness regularization weight (default: 1.0, lower = more aggressive)")
-    parser.add_argument("--step-size", type=float, default=0.03,
+    parser.add_argument("--step-size", type=float, default=0.05,
                         help="Optimizer step size / learning rate (default: 0.03)")
     parser.add_argument("--device", type=str, default="cuda")
 
