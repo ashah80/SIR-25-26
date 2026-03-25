@@ -1,34 +1,14 @@
 """
-Improved Audio Attacks for Referee Model
+Audio adversarial attacks for the Referee deepfake detection model.
 
-This file contains improved audio attack implementations with:
-1. Better transparency on methods and origins
-2. Improved effectiveness while maintaining imperceptibility
-3. Proper documentation of what each attack does
-
-ATTACK OVERVIEW:
-================
-
-1. ImprovedPsychoacousticAttack (RECOMMENDED)
-   - Space: WAVEFORM (gradients flow through mel-spectrogram transform)
-   - Origin: Custom implementation inspired by Qin et al. (ICML 2019)
-   - Key idea: Use psychoacoustic masking to hide perturbations in loud parts
-   - Improvements: Momentum, adaptive step size, better masking model
-
-2. MelSpacePGDAttack
-   - Space: MEL-SPECTROGRAM (direct perturbation)
-   - Origin: Standard PGD adapted for spectrograms
-   - Key idea: Attack the representation the model actually sees
-   - Note: Requires reconstruction (lossy) but may be more effective
-
-3. HybridAttack
-   - Combines waveform and mel-space attacks
-   - Uses waveform attack with mel-space loss guidance
+Includes:
+- ImprovedPsychoacousticAttack: Waveform-space attack with psychoacoustic masking
+- MelSpacePGDAttack: Direct perturbation in mel-spectrogram space
 
 Usage:
     python improved_audio_attacks.py --method improved-psychoacoustic --num-samples 5
     python improved_audio_attacks.py --method mel-pgd --num-samples 5
-    python improved_audio_attacks.py --method hybrid --num-samples 5
+    python improved_audio_attacks.py --preset quality --num-samples 5
 """
 
 import sys
@@ -38,7 +18,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchaudio
 import numpy as np
-from typing import Tuple, Dict, Any, Optional
+from typing import Tuple, Dict, Any
 import argparse
 import time
 
@@ -53,12 +33,14 @@ except ImportError:
     print("Warning: soundfile not found. Install with: pip install soundfile")
 
 
+# =============================================================================
+# Differentiable Mel Transform
+# =============================================================================
+
 class DifferentiableMelTransform(nn.Module):
     """
-    Differentiable mel-spectrogram transform matching Referee preprocessing.
-
-    This is the CRITICAL component that allows waveform-space attacks to work.
-    Gradients flow: loss -> model -> mel -> waveform
+    Differentiable mel-spectrogram transform matching Referee's preprocessing.
+    Allows gradients to flow from the model loss back to the waveform.
     """
 
     def __init__(
@@ -82,13 +64,12 @@ class DifferentiableMelTransform(nn.Module):
         self.max_spec_t = max_spec_t
         self.n_segments = n_segments
 
-        # Segment sizes
+        # Segment sizes (matching model preprocessing)
         segment_size_vframes = 16
         v_fps = 25
         self.seg_size_aframes = int(segment_size_vframes / v_fps * sample_rate)
         self.stride_aframes = int(0.5 * self.seg_size_aframes)
 
-        # Mel transform (differentiable)
         self.mel_spec = torchaudio.transforms.MelSpectrogram(
             sample_rate=sample_rate,
             n_fft=n_fft,
@@ -151,64 +132,34 @@ class DifferentiableMelTransform(nn.Module):
         return mel
 
 
+# =============================================================================
+# Psychoacoustic Attack
+# =============================================================================
+
 class ImprovedPsychoacousticAttack:
     """
-    Improved Psychoacoustic Audio Attack
+    Waveform-space audio attack using psychoacoustic masking.
 
-    ORIGINS & METHODOLOGY:
-    ======================
-    This attack is a CUSTOM IMPLEMENTATION inspired by:
+    Perturbations are hidden in loud parts of the audio where they are
+    less audible. Includes SNR regularization for quality control.
 
-    1. Qin et al., "Imperceptible, Robust, and Targeted Adversarial Examples
-       for Automatic Speech Recognition" (ICML 2019)
-       - Original paper: https://arxiv.org/abs/1903.10346
-       - Key idea: Use psychoacoustic masking to hide perturbations
-
-    2. MP3/AAC compression psychoacoustic models
-       - Louder sounds mask quieter sounds (simultaneous masking)
-       - Sounds before/after loud sounds are also masked (temporal masking)
-
-    HOW IT DIFFERS FROM ASR ATTACKS:
-    ================================
-    - ASR attacks optimize CTC loss / word error rate
-    - We optimize classification cross-entropy loss
-    - ASR attacks need adversarial text targets
-    - We just need to flip the classification
-
-    SPACE: WAVEFORM
-    ===============
-    Perturbations are applied to raw waveform, but the loss is computed
-    through a differentiable mel-spectrogram transform. This means:
-    - Output is directly playable audio
-    - No reconstruction artifacts
-    - Gradients flow: loss -> mel_transform -> waveform
-
-    QUALITY VS EFFECTIVENESS TRADE-OFF:
-    ====================================
-    Use these parameters to balance:
-    - target_snr_db: Higher = better quality, lower effectiveness
-    - snr_weight: Higher = prioritize quality over effectiveness
-    - masking_strength: Lower = more uniform perturbation (higher quality)
-    - eps: Lower = less perturbation overall
-
-    PRESETS:
-    ========
-    Quality mode:   eps=0.08, target_snr_db=40, snr_weight=0.3, masking_strength=0.3
-    Balanced mode:  eps=0.15, target_snr_db=35, snr_weight=0.1, masking_strength=0.5
-    Effective mode: eps=0.30, target_snr_db=25, snr_weight=0.0, masking_strength=0.8
+    Presets:
+        quality:   eps=0.08, target_snr=40dB, snr_weight=0.3, masking_strength=0.3
+        balanced:  eps=0.15, target_snr=35dB, snr_weight=0.1, masking_strength=0.5
+        effective: eps=0.30, target_snr=25dB, snr_weight=0.0, masking_strength=0.8
     """
 
     def __init__(
         self,
         model: nn.Module,
-        eps: float = 0.15,          # Max perturbation (0.05-0.3 range)
-        step_size: float = 0.01,    # Initial step size
-        num_iterations: int = 300,  # Attack iterations
-        momentum: float = 0.9,      # Momentum coefficient
-        adaptive_step: bool = True, # Decay step size over time
-        target_snr_db: float = 35.0, # Target SNR (higher = better quality)
-        snr_weight: float = 0.1,    # SNR regularization weight (0-1)
-        masking_strength: float = 0.5, # Masking curve strength (0-1)
+        eps: float = 0.15,
+        step_size: float = 0.01,
+        num_iterations: int = 300,
+        momentum: float = 0.9,
+        adaptive_step: bool = True,
+        target_snr_db: float = 35.0,
+        snr_weight: float = 0.1,
+        masking_strength: float = 0.5,
         device: str = 'cuda'
     ):
         """
@@ -216,18 +167,13 @@ class ImprovedPsychoacousticAttack:
             model: Referee model
             eps: Maximum L-inf perturbation (0.05-0.3 recommended)
             step_size: Initial PGD step size
-            num_iterations: Attack iterations (200-500 recommended)
-            momentum: Momentum coefficient (0.9 typical)
-            adaptive_step: Whether to decay step size
-            target_snr_db: Target SNR in dB (30-45 range)
-                           Higher = better audio quality but less effective attack
-            snr_weight: How much to penalize low SNR (0-1)
-                        0 = ignore SNR, maximize effectiveness
-                        1 = strongly prioritize audio quality
-            masking_strength: How much masking curve affects epsilon (0-1)
-                              0 = uniform epsilon everywhere (better quality)
-                              1 = full masking (loud areas perturbed more)
-            device: cuda/cpu
+            num_iterations: Attack iterations
+            momentum: Momentum coefficient
+            adaptive_step: Decay step size over time
+            target_snr_db: Target SNR in dB (higher = better quality)
+            snr_weight: SNR regularization (0 = ignore, 1 = prioritize quality)
+            masking_strength: Masking curve strength (0 = uniform, 1 = full masking)
+            device: cuda or cpu
         """
         self.model = model
         self.eps = eps
@@ -244,20 +190,11 @@ class ImprovedPsychoacousticAttack:
 
     def compute_masking_curve(self, waveform: torch.Tensor) -> torch.Tensor:
         """
-        Compute psychoacoustic masking curve.
-
-        Based on the principle that louder parts of audio can hide perturbations.
-        Uses STFT to get time-frequency representation, then computes energy per frame.
-
-        Args:
-            waveform: (B, T) audio
-
-        Returns:
-            mask: (B, T) values in [0.1, 1.0] indicating how much perturbation each sample can hide
+        Compute psychoacoustic masking curve based on signal energy.
+        Louder parts can hide more perturbation.
         """
         B, T = waveform.shape
 
-        # STFT for frequency analysis
         n_fft = 1024
         hop_length = 256
         window = torch.hann_window(n_fft, device=waveform.device)
@@ -266,17 +203,17 @@ class ImprovedPsychoacousticAttack:
             waveform, n_fft=n_fft, hop_length=hop_length,
             window=window, return_complex=True
         )
-        magnitude = torch.abs(spec)  # (B, n_fft//2+1, T_frames)
+        magnitude = torch.abs(spec)
 
-        # Energy per frame (louder = more masking)
-        frame_energy = torch.sum(magnitude ** 2, dim=1)  # (B, T_frames)
+        # Energy per frame
+        frame_energy = torch.sum(magnitude ** 2, dim=1)
 
-        # Spectral flatness (tonal sounds mask better than noise)
+        # Spectral flatness (tonal sounds mask better)
         geometric_mean = torch.exp(torch.mean(torch.log(magnitude + 1e-10), dim=1))
         arithmetic_mean = torch.mean(magnitude, dim=1)
-        spectral_flatness = geometric_mean / (arithmetic_mean + 1e-10)  # (B, T_frames)
+        spectral_flatness = geometric_mean / (arithmetic_mean + 1e-10)
 
-        # Combine: high energy + low flatness (tonal) = good masking
+        # High energy + low flatness = good masking
         masking = frame_energy * (1 - 0.5 * spectral_flatness)
         masking = masking / (masking.max() + 1e-10)
 
@@ -285,7 +222,6 @@ class ImprovedPsychoacousticAttack:
             masking.unsqueeze(1), size=T, mode='linear', align_corners=False
         ).squeeze(1)
 
-        # Apply sqrt for smoother masking, ensure minimum
         mask = torch.sqrt(mask)
         mask = torch.clamp(mask, min=0.1, max=1.0)
 
@@ -300,15 +236,7 @@ class ImprovedPsychoacousticAttack:
         labels: torch.Tensor,
         verbose: bool = True
     ) -> Tuple[torch.Tensor, Dict[str, Any]]:
-        """
-        Run improved psychoacoustic attack.
-
-        The attack works by:
-        1. Computing a masking curve from the original audio
-        2. Iteratively updating perturbation using momentum-PGD
-        3. Scaling perturbation by masking curve (more where louder)
-        4. Projecting to epsilon ball with masking-aware bounds
-        """
+        """Run the psychoacoustic attack."""
         self.model.eval()
 
         if original_waveform.dim() == 1:
@@ -317,7 +245,6 @@ class ImprovedPsychoacousticAttack:
         B, T = original_waveform.shape
         orig_waveform = original_waveform.clone().detach()
 
-        # Get active region
         active_start, active_end = self.mel_transform.get_active_region(T)
 
         if verbose:
@@ -329,19 +256,13 @@ class ImprovedPsychoacousticAttack:
         # Compute masking curve
         with torch.no_grad():
             raw_masking_curve = self.compute_masking_curve(orig_waveform)
-            # Apply masking strength: interpolate between uniform (1.0) and full masking
-            # masking_strength=0 -> uniform eps everywhere
-            # masking_strength=1 -> full masking curve
             masking_curve = 1.0 - self.masking_strength * (1.0 - raw_masking_curve)
-            # Zero out masking outside active region
             masking_curve[:, :active_start] = 0
             masking_curve[:, active_end:] = 0
 
-        # Initialize
         delta = torch.zeros_like(orig_waveform)
-        velocity = torch.zeros_like(orig_waveform)  # For momentum
+        velocity = torch.zeros_like(orig_waveform)
 
-        # Initial prediction
         with torch.no_grad():
             orig_mel = self.mel_transform(orig_waveform)
             logits = self.model(target_video, orig_mel, ref_video, ref_audio)[0]
@@ -353,73 +274,54 @@ class ImprovedPsychoacousticAttack:
 
         best_delta = delta.clone()
         best_real_prob = orig_real_prob
-
         start_time = time.time()
 
         for i in range(self.num_iterations):
             delta.requires_grad_(True)
 
-            # Current step size (optionally adaptive)
             if self.adaptive_step:
                 current_step = self.step_size * (1 - 0.5 * i / self.num_iterations)
             else:
                 current_step = self.step_size
 
-            # Forward pass
             adv_waveform = orig_waveform + delta
             adv_mel = self.mel_transform(adv_waveform)
             logits = self.model(target_video, adv_mel, ref_video, ref_audio)[0]
             probs = F.softmax(logits, dim=1)
 
-            # Loss: we want to MAXIMIZE cross-entropy (fool the classifier)
-            # For fake samples (label=1), maximizing CE means pushing toward real (class 0)
             classification_loss = F.cross_entropy(logits, labels)
 
-            # SNR regularization: penalize low SNR (high perturbation energy)
-            # Higher snr_weight = prioritize audio quality over attack effectiveness
+            # SNR regularization
             if self.snr_weight > 0:
                 active_delta = delta[:, active_start:active_end]
                 active_orig = orig_waveform[:, active_start:active_end]
                 signal_power = torch.sum(active_orig ** 2)
                 noise_power = torch.sum(active_delta ** 2) + 1e-10
                 current_snr = 10 * torch.log10(signal_power / noise_power)
-                # Penalize if SNR is below target
                 snr_penalty = F.relu(self.target_snr_db - current_snr)
                 loss = classification_loss - self.snr_weight * snr_penalty
             else:
                 loss = classification_loss
 
-            # Backward
             self.model.zero_grad()
             loss.backward()
-
             grad = delta.grad.detach()
 
             with torch.no_grad():
-                # Apply masking to gradient
                 grad_masked = grad * masking_curve
-
-                # Normalize gradient
                 grad_norm = torch.norm(grad_masked.view(B, -1), dim=1, keepdim=True).view(B, 1) + 1e-10
                 grad_normalized = grad_masked / grad_norm
 
-                # Momentum update
                 velocity = self.momentum * velocity + grad_normalized
-
-                # Update delta
                 delta = delta + current_step * velocity
 
-                # Project with masking-aware epsilon
-                # Allow larger perturbations where masking is higher
                 eps_adaptive = self.eps * masking_curve
                 delta = torch.clamp(delta, -eps_adaptive, eps_adaptive)
 
-                # Ensure valid audio range
                 adv_waveform = torch.clamp(orig_waveform + delta, -1.0, 1.0)
                 delta = adv_waveform - orig_waveform
                 delta = delta.detach()
 
-            # Track best
             current_real_prob = probs[0, 0].item()
             if current_real_prob > best_real_prob:
                 best_real_prob = current_real_prob
@@ -434,8 +336,6 @@ class ImprovedPsychoacousticAttack:
                 break
 
         attack_time = time.time() - start_time
-
-        # Final result
         adv_waveform = orig_waveform + best_delta
 
         with torch.no_grad():
@@ -444,7 +344,6 @@ class ImprovedPsychoacousticAttack:
             probs = F.softmax(logits, dim=1)
             final_real_prob = probs[0, 0].item()
 
-        # Stats
         delta_final = adv_waveform - orig_waveform
         active_delta = delta_final[:, active_start:active_end]
         active_orig = orig_waveform[:, active_start:active_end]
@@ -480,25 +379,16 @@ class ImprovedPsychoacousticAttack:
         return adv_waveform.detach(), info
 
 
+# =============================================================================
+# Mel-Space Attack
+# =============================================================================
+
 class MelSpacePGDAttack:
     """
-    Direct PGD Attack in Mel-Spectrogram Space
+    PGD attack directly in mel-spectrogram space.
 
-    METHODOLOGY:
-    ============
-    Instead of perturbing the waveform and hoping the perturbation survives
-    the mel-spectrogram transform, this attack directly perturbs the
-    mel-spectrogram that the model sees.
-
-    PROS:
-    - Directly manipulates what the model sees
-    - More effective at changing model output
-
-    CONS:
-    - Requires reconstruction (Griffin-Lim) to get back to waveform
-    - Reconstruction introduces artifacts
-
-    SPACE: MEL-SPECTROGRAM
+    Pros: Directly manipulates what the model sees, often more effective.
+    Cons: Requires reconstruction (Griffin-Lim), which introduces artifacts.
     """
 
     def __init__(
@@ -517,7 +407,7 @@ class MelSpacePGDAttack:
 
     def attack(
         self,
-        target_audio: torch.Tensor,  # (1, S, 1, F, Ta) mel-spectrogram
+        target_audio: torch.Tensor,
         target_video: torch.Tensor,
         ref_audio: torch.Tensor,
         ref_video: torch.Tensor,
@@ -530,7 +420,6 @@ class MelSpacePGDAttack:
         orig_audio = target_audio.clone().detach()
         delta = torch.zeros_like(target_audio, requires_grad=True)
 
-        # Initial prediction
         with torch.no_grad():
             logits = self.model(target_video, orig_audio, ref_video, ref_audio)[0]
             probs = F.softmax(logits, dim=1)
@@ -542,7 +431,6 @@ class MelSpacePGDAttack:
         best_delta = delta.clone()
         best_real_prob = orig_real_prob
         velocity = torch.zeros_like(delta)
-
         start_time = time.time()
 
         for i in range(self.num_iterations):
@@ -555,11 +443,9 @@ class MelSpacePGDAttack:
             loss = F.cross_entropy(logits, labels)
             self.model.zero_grad()
             loss.backward()
-
             grad = delta.grad.detach()
 
             with torch.no_grad():
-                # L2 normalized gradient with momentum
                 grad_flat = grad.view(1, -1)
                 grad_norm = torch.norm(grad_flat, dim=1, keepdim=True) + 1e-10
                 grad_normalized = grad / grad_norm.view(-1, 1, 1, 1, 1)
@@ -567,7 +453,6 @@ class MelSpacePGDAttack:
                 velocity = 0.9 * velocity + grad_normalized
                 delta = delta + self.step_size * velocity
 
-                # L2 projection
                 delta_flat = delta.view(1, -1)
                 delta_norm = torch.norm(delta_flat, dim=1, keepdim=True)
                 if delta_norm > self.eps:
@@ -589,7 +474,6 @@ class MelSpacePGDAttack:
                 break
 
         attack_time = time.time() - start_time
-
         adv_audio = orig_audio + best_delta
 
         with torch.no_grad():
@@ -615,9 +499,9 @@ class MelSpacePGDAttack:
         return adv_audio, info
 
 
-# ============================================================================
-# UTILITY FUNCTIONS
-# ============================================================================
+# =============================================================================
+# Utilities
+# =============================================================================
 
 def extract_audio_from_video(video_path: str, sample_rate: int = 16000) -> np.ndarray:
     """Extract audio from video file using ffmpeg."""
@@ -644,7 +528,7 @@ def extract_audio_from_video(video_path: str, sample_rate: int = 16000) -> np.nd
 
 
 def load_model(device: str = 'cuda'):
-    """Load Referee model."""
+    """Load the Referee model with pretrained weights."""
     from model.referee import Referee
     from omegaconf import OmegaConf
 
@@ -673,8 +557,12 @@ def load_model(device: str = 'cuda'):
     return model
 
 
+# =============================================================================
+# Main
+# =============================================================================
+
 def main():
-    parser = argparse.ArgumentParser(description="Improved Audio Attacks")
+    parser = argparse.ArgumentParser(description="Audio adversarial attacks for Referee")
     parser.add_argument("--method", type=str, default="improved-psychoacoustic",
                         choices=["improved-psychoacoustic", "mel-pgd"],
                         help="Attack method")
@@ -684,11 +572,11 @@ def main():
                         help="Perturbation budget (0.05-0.3 for waveform)")
     parser.add_argument("--max-iter", type=int, default=300)
     parser.add_argument("--target-snr", type=float, default=35.0,
-                        help="Target SNR in dB (higher = better quality, 30-45 range)")
+                        help="Target SNR in dB (higher = better quality)")
     parser.add_argument("--snr-weight", type=float, default=0.1,
-                        help="SNR regularization weight (0-1, higher = prioritize quality)")
+                        help="SNR regularization weight (0-1)")
     parser.add_argument("--masking-strength", type=float, default=0.5,
-                        help="Masking curve strength (0-1, lower = better quality)")
+                        help="Masking curve strength (0-1)")
     parser.add_argument("--preset", type=str, default=None,
                         choices=["quality", "balanced", "effective"],
                         help="Use a preset configuration")
@@ -696,28 +584,28 @@ def main():
 
     args = parser.parse_args()
 
-    # Apply presets if specified
+    # Apply presets
     if args.preset == "quality":
         args.eps = 0.08
         args.target_snr = 40.0
         args.snr_weight = 0.3
         args.masking_strength = 0.3
-        print("Using QUALITY preset: prioritizes audio quality over effectiveness")
+        print("Using QUALITY preset: prioritizes audio quality")
     elif args.preset == "balanced":
         args.eps = 0.15
         args.target_snr = 35.0
         args.snr_weight = 0.1
         args.masking_strength = 0.5
-        print("Using BALANCED preset: balanced quality and effectiveness")
+        print("Using BALANCED preset")
     elif args.preset == "effective":
         args.eps = 0.30
         args.target_snr = 25.0
         args.snr_weight = 0.0
         args.masking_strength = 0.8
-        print("Using EFFECTIVE preset: prioritizes attack effectiveness")
+        print("Using EFFECTIVE preset: prioritizes attack success")
 
     print("=" * 70)
-    print("Improved Audio Adversarial Attacks")
+    print("Audio Adversarial Attacks")
     print("=" * 70)
     print()
     print(f"Method: {args.method}")
@@ -751,7 +639,7 @@ def main():
 
         sample = dataset[sample_idx]
         target_video = sample['target_video'].unsqueeze(0)
-        target_audio_mel = sample['target_audio'].unsqueeze(0)  # Mel-spectrogram
+        target_audio_mel = sample['target_audio'].unsqueeze(0)
         ref_audio = sample['reference_audio'].unsqueeze(0)
         ref_video = sample['reference_video'].unsqueeze(0)
         labels = sample['fake_label'].unsqueeze(0)
@@ -764,7 +652,6 @@ def main():
 
         try:
             if args.method == "improved-psychoacoustic":
-                # Extract waveform for waveform-space attack
                 original_waveform = extract_audio_from_video(video_path)
                 waveform_tensor = torch.from_numpy(original_waveform).float().to(args.device)
 
@@ -783,14 +670,12 @@ def main():
                     target_video, ref_audio, ref_video, labels
                 )
 
-                # Save
                 adv_wav = adv_waveform[0].cpu().numpy()
                 max_val = np.max(np.abs(adv_wav))
                 if max_val > 0:
                     adv_wav = adv_wav / max_val * 0.95
                 sf.write(str(sample_out / "adversarial.wav"), adv_wav, 16000)
 
-                # Save original
                 orig_wav = original_waveform.copy()
                 max_val = np.max(np.abs(orig_wav))
                 if max_val > 0:
@@ -800,7 +685,7 @@ def main():
             elif args.method == "mel-pgd":
                 attack = MelSpacePGDAttack(
                     model=model,
-                    eps=args.eps if args.eps > 1 else 3.0,  # Default higher for mel space
+                    eps=args.eps if args.eps > 1 else 3.0,
                     num_iterations=args.max_iter,
                     device=args.device
                 )
@@ -809,12 +694,10 @@ def main():
                     target_audio_mel, target_video, ref_audio, ref_video, labels
                 )
 
-                # Note: For mel-space, we'd need reconstruction to save audio
-                print("  Note: Mel-space attack - no waveform output (use torchaudio reconstruction)")
+                print("  Note: Mel-space attack - no waveform output (would need reconstruction)")
 
             results.append(attack_info)
 
-            # Save stats
             with open(sample_out / "stats.txt", 'w') as f:
                 for k, v in attack_info.items():
                     f.write(f"{k}: {v}\n")

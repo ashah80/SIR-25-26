@@ -1,15 +1,9 @@
 """
-Improved Adversarial Video Attacks with Temporal Consistency and Flickering Attack.
+Video adversarial attacks for the Referee deepfake detection model.
 
-This script provides:
-1. Fixed video saving that handles overlapping segments correctly
-2. Improved ART attacks with temporal consistency regularization
-3. Over-the-air flickering attack implementation
-
-The flickering attack is designed to be:
-- More imperceptible (uses low-frequency patterns)
-- Temporally consistent (smooth across frames)
-- Potentially effective against video-based detection
+Includes:
+- FlickeringAttack: Temporally smooth perturbations using learnable basis patterns
+- ART-based PGD attack with L2 norm constraints
 
 Usage:
     python improved_video_attack.py --attack flickering --num-samples 3
@@ -22,14 +16,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from typing import Tuple, Optional, Dict, Any, List
+from typing import Tuple, Dict, Any, List
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
 import shutil
 import argparse
 import time
-import math
 
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.append(str(PROJECT_ROOT))
@@ -48,7 +41,9 @@ except ImportError:
     HAVE_ART = False
 
 
-# Video Saving (handles overlapping segments)
+# =============================================================================
+# Video Saving
+# =============================================================================
 
 def save_video_non_overlapping(
     video_tensor: torch.Tensor,
@@ -59,18 +54,17 @@ def save_video_non_overlapping(
     std: Tuple[float, ...] = (0.5, 0.5, 0.5)
 ):
     """
-    Save video tensor as MP4, properly handling overlapping segments.
+    Save video tensor as MP4, handling overlapping segments properly.
 
-    The Referee model uses 8 segments with 50% overlap. When saving,
-    we only use the non-overlapping portion of each segment to avoid
-    frame repetition and choppiness.
+    The model uses 8 segments with 50% overlap. We only use the non-overlapping
+    portion of each segment to avoid frame repetition.
 
     Args:
         video_tensor: (B, S, T, C, H, W) or (S, T, C, H, W) normalized video
-        save_path: Path to save MP4
-        original_fps: FPS to save at
-        segment_overlap: Overlap ratio between segments (default 0.5)
-        mean, std: Normalization parameters
+        save_path: Output path for MP4 file
+        original_fps: Frame rate for output video
+        segment_overlap: Overlap ratio between segments (0.5 = 50%)
+        mean, std: Normalization parameters to reverse
     """
     if not HAVE_CV2:
         print("  Skipping video save (OpenCV not available)")
@@ -87,85 +81,77 @@ def save_video_non_overlapping(
 
     video_denorm = video_tensor * std_t + mean_t
     video_denorm = torch.clamp(video_denorm, 0, 1)
-
-    # Remove batch dimension
-    video_denorm = video_denorm[0]  # (S, T, C, H, W)
+    video_denorm = video_denorm[0]  # Remove batch dim: (S, T, C, H, W)
 
     S, T, C, H, W = video_denorm.shape
 
-    # Calculate non-overlapping frames per segment
-    # With 50% overlap, only use first half of each segment (except last)
+    # Only use first half of each segment (non-overlapping portion), except last segment
     non_overlap_frames = int(T * (1 - segment_overlap))
     if non_overlap_frames < 1:
         non_overlap_frames = 1
 
-    # Collect non-overlapping frames
     frames = []
     for s in range(S):
         if s < S - 1:
-            # Use first half of frames (non-overlapping portion)
             segment_frames = video_denorm[s, :non_overlap_frames]
         else:
-            # Use all frames from last segment
             segment_frames = video_denorm[s]
 
         for t in range(segment_frames.shape[0]):
-            frame = segment_frames[t].permute(1, 2, 0).cpu().numpy()  # (H, W, C)
+            frame = segment_frames[t].permute(1, 2, 0).cpu().numpy()
             frame = (frame * 255).astype(np.uint8)
-            frame = frame[:, :, ::-1]  # RGB to BGR
+            frame = frame[:, :, ::-1]  # RGB to BGR for OpenCV
             frames.append(frame)
 
     # Write video
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(str(save_path), fourcc, original_fps, (W, H))
-
     for frame in frames:
         out.write(frame)
-
     out.release()
+
     print(f"  Saved video ({len(frames)} frames): {save_path}")
 
 
-# Over-the-Air Flickering Attack
+# =============================================================================
+# Flickering Attack
+# =============================================================================
 
 class FlickeringAttack:
     """
-    Over-the-air flickering attack for video.
+    Video attack using temporally smooth, learnable basis patterns.
 
-    This attack creates temporal perturbations that:
-    1. Flicker at specific frequencies (often imperceptible to humans)
-    2. Use smooth spatial patterns (not pixel-level noise)
-    3. Are designed to survive physical capture (display -> camera)
-
-    The attack works by adding a low-frequency temporal pattern that
-    oscillates across frames, potentially disrupting temporal analysis.
+    Creates perturbations that:
+    - Flicker at specific frequencies (often imperceptible to humans)
+    - Use smooth spatial patterns (not pixel-level noise)
+    - Are designed to survive physical capture (display -> camera)
     """
 
     def __init__(
         self,
         model: nn.Module,
         eps: float = 0.1,
-        flicker_freq: float = 5.0,       # Flicker frequency in Hz (increased for more aggressive attack)
-        spatial_freq: int = 4,           # Spatial frequency (lower = larger patterns = more effective)
-        num_basis: int = 8,              # Number of basis patterns (more = more expressive)
+        flicker_freq: float = 5.0,
+        spatial_freq: int = 4,
+        num_basis: int = 8,
         num_iterations: int = 50,
         step_size: float = 0.01,
-        smoothness_weight: float = 1.0,  # Temporal smoothness regularization (lower = more aggressive)
+        smoothness_weight: float = 1.0,
         targeted: bool = False,
         device: str = 'cuda'
     ):
         """
         Args:
-            model: Target model
+            model: Target Referee model
             eps: Maximum perturbation magnitude
-            flicker_freq: Temporal flicker frequency in Hz (higher = faster flicker)
-            spatial_freq: Spatial pattern frequency (lower = larger, more effective patterns)
-            num_basis: Number of learnable basis patterns (more = more expressive)
-            num_iterations: Number of optimization iterations
-            step_size: Gradient step size
-            smoothness_weight: Weight for temporal smoothness loss (lower = more aggressive)
+            flicker_freq: Temporal flicker frequency in Hz
+            spatial_freq: Spatial pattern frequency (lower = larger patterns)
+            num_basis: Number of learnable basis patterns
+            num_iterations: Optimization iterations
+            step_size: Learning rate for optimizer
+            smoothness_weight: Weight for temporal smoothness regularization
             targeted: Whether to do targeted attack
-            device: Device to use
+            device: cuda or cpu
         """
         self.model = model
         self.eps = eps
@@ -178,122 +164,57 @@ class FlickeringAttack:
         self.targeted = targeted
         self.device = device
 
-    def _create_flicker_pattern(
-        self,
-        shape: Tuple[int, ...],
-        video_fps: float = 25.0
-    ) -> torch.Tensor:
+    def _create_learnable_flicker(self, shape: Tuple[int, ...]) -> List[torch.Tensor]:
         """
-        Create a flickering pattern tensor.
+        Create learnable parameters for the flickering perturbation.
 
         Args:
             shape: (S, T, C, H, W) video shape
-            video_fps: Video frame rate
 
         Returns:
-            pattern: (S, T, C, H, W) flickering pattern in [0, 1]
-        """
-        S, T, C, H, W = shape
-        total_frames = S * T
-
-        # Create spatial pattern (smooth, low-frequency)
-        # Using cosine patterns for smooth spatial variation
-        y_coords = torch.linspace(0, self.spatial_freq * np.pi, H, device=self.device)
-        x_coords = torch.linspace(0, self.spatial_freq * np.pi, W, device=self.device)
-
-        yy, xx = torch.meshgrid(y_coords, x_coords, indexing='ij')
-        spatial_pattern = (torch.cos(yy) * torch.cos(xx) + 1) / 2  # [0, 1]
-        spatial_pattern = spatial_pattern.unsqueeze(0).expand(C, -1, -1)  # (C, H, W)
-
-        # Create temporal modulation
-        time_steps = torch.arange(total_frames, device=self.device, dtype=torch.float32)
-        # Convert frame index to time, then to phase
-        time_seconds = time_steps / video_fps
-        temporal_mod = torch.sin(2 * np.pi * self.flicker_freq * time_seconds)
-        temporal_mod = (temporal_mod + 1) / 2  # [0, 1]
-
-        # Combine spatial and temporal
-        pattern = torch.zeros(S, T, C, H, W, device=self.device)
-
-        for s in range(S):
-            for t in range(T):
-                frame_idx = s * T + t
-                # Modulate spatial pattern with temporal signal
-                pattern[s, t] = spatial_pattern * temporal_mod[frame_idx]
-
-        return pattern
-
-    def _create_learnable_flicker(
-        self,
-        shape: Tuple[int, ...]
-    ) -> Tuple[torch.Tensor, List[torch.Tensor]]:
-        """
-        Create learnable flickering perturbation using basis patterns.
-
-        Uses a small number of basis patterns that are temporally modulated,
-        making the perturbation smoother and more structured.
-
-        Args:
-            shape: (S, T, C, H, W)
-
-        Returns:
-            perturbation: Initial perturbation tensor
-            params: List of learnable parameters
+            List of learnable parameters [basis_patterns, temporal_coeffs]
         """
         S, T, C, H, W = shape
 
-        # Learnable spatial basis patterns (small, tiled)
-        # Create tensor first, then set requires_grad to ensure leaf tensors
+        # Learnable spatial basis patterns
         basis_size = max(W // self.spatial_freq, 16)
         basis_patterns = torch.randn(
             self.num_basis, C, basis_size, basis_size,
             device=self.device
-        )
-        basis_patterns = basis_patterns * 0.01  # Scale
-        basis_patterns = basis_patterns.detach().requires_grad_(True)  # Make leaf tensor
+        ) * 0.01
+        basis_patterns = basis_patterns.detach().requires_grad_(True)
 
         # Learnable temporal coefficients for each basis
-        # Shape: (num_basis, S*T)
         temporal_coeffs = torch.randn(
             self.num_basis, S * T,
             device=self.device
-        )
-        temporal_coeffs = temporal_coeffs * 0.1  # Scale
-        temporal_coeffs = temporal_coeffs.detach().requires_grad_(True)  # Make leaf tensor
+        ) * 0.1
+        temporal_coeffs = temporal_coeffs.detach().requires_grad_(True)
 
         return [basis_patterns, temporal_coeffs]
 
-    def _build_perturbation(
-        self,
-        params: List[torch.Tensor],
-        shape: Tuple[int, ...]
-    ) -> torch.Tensor:
-        """Build full perturbation from learnable parameters."""
+    def _build_perturbation(self, params: List[torch.Tensor], shape: Tuple[int, ...]) -> torch.Tensor:
+        """Build full perturbation tensor from learnable parameters."""
         S, T, C, H, W = shape
         basis_patterns, temporal_coeffs = params
-        num_basis = basis_patterns.shape[0]
 
-        # Tile basis patterns to full resolution
+        # Upsample basis patterns to full resolution
         tiled_basis = F.interpolate(
             basis_patterns,
             size=(H, W),
             mode='bilinear',
             align_corners=False
-        )  # (num_basis, C, H, W)
+        )
 
-        # Apply temporal modulation
+        # Build perturbation frame by frame
         perturbation = torch.zeros(S, T, C, H, W, device=self.device)
-
         for s in range(S):
             for t in range(T):
                 frame_idx = s * T + t
                 frame_pert = torch.zeros(C, H, W, device=self.device)
-
-                for b in range(num_basis):
-                    # Smooth temporal transition using tanh
+                for b in range(self.num_basis):
                     coeff = torch.tanh(temporal_coeffs[b, frame_idx])
                     frame_pert = frame_pert + coeff * tiled_basis[b]
-
                 perturbation[s, t] = frame_pert
 
         return perturbation
@@ -311,16 +232,16 @@ class FlickeringAttack:
         Run the flickering attack.
 
         Args:
-            target_video: (1, S, T, C, H, W)
-            target_audio: (1, S, 1, F, Ta) - kept unchanged
-            ref_video: (1, S, T, C, H, W)
-            ref_audio: (1, S, 1, F, Ta)
-            labels: (1,) label tensor
+            target_video: (1, S, T, C, H, W) input video
+            target_audio: (1, S, 1, F, Ta) input audio (unchanged)
+            ref_video: (1, S, T, C, H, W) reference video
+            ref_audio: (1, S, 1, F, Ta) reference audio
+            labels: (1,) ground truth label
             verbose: Print progress
 
         Returns:
-            adv_video: Adversarial video
-            info: Attack information dict
+            adv_video: Adversarial video tensor
+            info: Dictionary with attack statistics
         """
         self.model.eval()
 
@@ -337,26 +258,20 @@ class FlickeringAttack:
         # Initialize learnable parameters
         shape = target_video.shape[1:]  # (S, T, C, H, W)
         params = self._create_learnable_flicker(shape)
-
-        # Optimizer for the parameters
         optimizer = torch.optim.Adam(params, lr=self.step_size)
 
         best_adv = target_video.clone()
         best_real_prob = orig_real_prob
-
         start_time = time.time()
 
         for i in range(self.num_iterations):
             optimizer.zero_grad()
 
-            # Build perturbation from parameters
+            # Build perturbation and apply
             perturbation = self._build_perturbation(params, shape)
-            perturbation = perturbation.unsqueeze(0)  # (1, S, T, C, H, W)
-
-            # Clamp perturbation magnitude
+            perturbation = perturbation.unsqueeze(0)
             perturbation = torch.clamp(perturbation, -self.eps, self.eps)
 
-            # Apply perturbation
             adv_video = target_video + perturbation
             adv_video = torch.clamp(adv_video, -1.0, 1.0)
 
@@ -364,15 +279,14 @@ class FlickeringAttack:
             logits = self.model(adv_video, target_audio, ref_video, ref_audio)[0]
             probs = F.softmax(logits, dim=1)
 
-            # Loss: maximize real probability (minimize fake probability)
+            # Loss: maximize real probability
             if self.targeted:
-                loss = F.cross_entropy(logits, torch.zeros_like(labels))  # Target: real
+                loss = F.cross_entropy(logits, torch.zeros_like(labels))
             else:
-                # Untargeted: maximize current class loss
                 loss = -F.cross_entropy(logits, labels)
 
-            # Add temporal smoothness regularization
-            if perturbation.shape[2] > 1:  # T > 1
+            # Temporal smoothness regularization
+            if perturbation.shape[2] > 1:
                 temporal_diff = perturbation[:, :, 1:] - perturbation[:, :, :-1]
                 smoothness_loss = torch.mean(temporal_diff ** 2) * self.smoothness_weight
                 loss = loss + smoothness_loss
@@ -380,7 +294,7 @@ class FlickeringAttack:
             loss.backward()
             optimizer.step()
 
-            # Track best
+            # Track best result
             current_real_prob = probs[0, 0].item()
             if current_real_prob > best_real_prob:
                 best_real_prob = current_real_prob
@@ -435,12 +349,12 @@ class FlickeringAttack:
         return best_adv, info
 
 
-# Improved ART Attack with Temporal Consistency
+# =============================================================================
+# ART-based Attack
+# =============================================================================
 
 class TemporallyConsistentARTWrapper(nn.Module):
-    """
-    ART wrapper that adds temporal consistency regularization.
-    """
+    """Wrapper to make Referee compatible with ART's interface."""
 
     def __init__(
         self,
@@ -482,7 +396,6 @@ class TemporallyConsistentARTWrapper(nn.Module):
             ref_vis=ref_video,
             ref_aud=ref_audio
         )
-
         return logits_rf
 
 
@@ -499,13 +412,10 @@ def run_improved_art_attack(
     verbose: bool = True
 ) -> Tuple[torch.Tensor, Dict[str, Any]]:
     """
-    Run improved ART attack with properly scaled epsilon.
+    Run ART PGD attack with L2 norm.
 
-    NOTE: For L2 norm with video (19M elements), the per-pixel perturbation is:
-    per_pixel ≈ eps / sqrt(num_elements)
-
-    So eps=0.1 → per_pixel ≈ 0.00002 (essentially nothing!)
-    For visible effect, we auto-scale: eps_scaled = eps * sqrt(num_elements) * 0.01
+    Note: For L2 norm with video (~19M elements), per-pixel perturbation is tiny.
+    We auto-scale epsilon to get visible effect.
     """
     if not HAVE_ART:
         raise ImportError("ART not installed")
@@ -519,13 +429,12 @@ def run_improved_art_attack(
     )
     wrapper.eval()
 
-    # Auto-scale epsilon for L2 norm on high-dimensional video
-    # This gives approximately eps perturbation per pixel
+    # Scale epsilon for high-dimensional video
     num_elements = wrapper.flattened_size
-    eps_scaled = eps * np.sqrt(num_elements) * 0.1  # Scale factor for reasonable perturbation
+    eps_scaled = eps * np.sqrt(num_elements) * 0.1
 
     if verbose:
-        print(f"L2 epsilon scaling: {eps:.2f} → {eps_scaled:.1f} (for {num_elements:,} elements)")
+        print(f"L2 epsilon scaling: {eps:.2f} -> {eps_scaled:.1f} (for {num_elements:,} elements)")
 
     # Get initial prediction
     with torch.no_grad():
@@ -537,7 +446,7 @@ def run_improved_art_attack(
     if verbose:
         print(f"Initial: Real={orig_real_prob:.4f}, Fake={orig_fake_prob:.4f}")
 
-    # Create ART classifier with L2 norm (smoother than Linf)
+    # Create ART classifier
     classifier = PyTorchClassifier(
         model=wrapper,
         loss=nn.CrossEntropyLoss(),
@@ -547,15 +456,15 @@ def run_improved_art_attack(
         device_type='gpu' if device == 'cuda' else 'cpu'
     )
 
-    # Use L2 norm for smoother perturbations
+    # Create PGD attack with L2 norm
     attack = ProjectedGradientDescent(
         estimator=classifier,
-        norm=2,              # L2 instead of Linf (smoother)
-        eps=eps_scaled,      # Use scaled epsilon
-        eps_step=eps_scaled / 10,   # Proportionate step size
+        norm=2,
+        eps=eps_scaled,
+        eps_step=eps_scaled / 10,
         max_iter=max_iter,
         targeted=False,
-        num_random_init=0,   # No random init (faster)
+        num_random_init=0,
         batch_size=1,
         verbose=False
     )
@@ -564,7 +473,7 @@ def run_improved_art_attack(
     labels_np = labels.cpu().numpy()
 
     if verbose:
-        print(f"Running improved ART attack (L2 norm, eps_scaled={eps_scaled:.1f}, iter={max_iter})...")
+        print(f"Running ART attack (L2 norm, eps_scaled={eps_scaled:.1f}, iter={max_iter})...")
 
     start_time = time.time()
     adv_video_flat = attack.generate(x=video_flat, y=labels_np)
@@ -573,7 +482,7 @@ def run_improved_art_attack(
     adv_video = torch.from_numpy(adv_video_flat).float().to(device)
     adv_video = adv_video.reshape(target_video.shape)
 
-    # Get final prediction
+    # Final evaluation
     with torch.no_grad():
         logits = model(adv_video, target_audio, ref_video, ref_audio)[0]
         probs = F.softmax(logits, dim=1)
@@ -607,10 +516,12 @@ def run_improved_art_attack(
     return adv_video, info
 
 
-# Model and Data Loading
+# =============================================================================
+# Model Loading
+# =============================================================================
 
 def load_model(device: str = 'cuda'):
-    """Load Referee model."""
+    """Load the Referee model with pretrained weights."""
     from model.referee import Referee
     from omegaconf import OmegaConf
 
@@ -630,6 +541,7 @@ def load_model(device: str = 'cuda'):
         else:
             state_dict = checkpoint
 
+        # Remove 'module.' prefix if present
         new_state_dict = {(k[7:] if k.startswith('module.') else k): v
                          for k, v in state_dict.items()}
         model.load_state_dict(new_state_dict, strict=False)
@@ -641,7 +553,7 @@ def load_model(device: str = 'cuda'):
 
 
 def load_sample(dataset, idx: int, device: str):
-    """Load a sample from dataset."""
+    """Load a single sample from the dataset."""
     sample = dataset[idx]
     return (
         sample['target_audio'].unsqueeze(0).to(device),
@@ -653,14 +565,16 @@ def load_sample(dataset, idx: int, device: str):
     )
 
 
+# =============================================================================
 # Visualization
+# =============================================================================
 
 def save_comparison(orig_video, adv_video, save_path: Path, num_frames: int = 8):
-    """Save frame comparison visualization."""
+    """Save a visual comparison of original vs adversarial frames."""
     mean = torch.tensor([0.5, 0.5, 0.5], device=orig_video.device).view(1, 1, 1, 3, 1, 1)
     std = torch.tensor([0.5, 0.5, 0.5], device=orig_video.device).view(1, 1, 1, 3, 1, 1)
 
-    orig = torch.clamp(orig_video * std + mean, 0, 1)[0]  # (S, T, C, H, W)
+    orig = torch.clamp(orig_video * std + mean, 0, 1)[0]
     adv = torch.clamp(adv_video * std + mean, 0, 1)[0]
 
     S, T, C, H, W = orig.shape
@@ -699,7 +613,7 @@ def save_comparison(orig_video, adv_video, save_path: Path, num_frames: int = 8)
 
 
 def save_stats(info: Dict, save_path: Path):
-    """Save attack statistics."""
+    """Save attack statistics to a text file."""
     with open(save_path, 'w') as f:
         f.write("Attack Results\n")
         f.write("=" * 40 + "\n\n")
@@ -711,37 +625,39 @@ def save_stats(info: Dict, save_path: Path):
     print(f"  Saved stats: {save_path}")
 
 
+# =============================================================================
 # Main
+# =============================================================================
 
 def main():
-    parser = argparse.ArgumentParser(description="Improved video attacks")
+    parser = argparse.ArgumentParser(description="Video adversarial attacks for Referee")
     parser.add_argument("--attack", type=str, default="flickering",
                         choices=["flickering", "art-improved"],
-                        help="Attack type")
+                        help="Attack type to run")
     parser.add_argument("--num-samples", type=int, default=3,
-                        help="Number of samples to test")
+                        help="Number of samples to attack")
     parser.add_argument("--output-dir", type=str, default="./art-testing",
-                        help="Output directory")
+                        help="Directory to save results")
     parser.add_argument("--eps", type=float, default=0.05,
-                        help="Perturbation budget (default: 0.2)")
+                        help="Perturbation budget")
     parser.add_argument("--max-iter", type=int, default=200,
-                        help="Max iterations (default: 100)")
+                        help="Maximum iterations")
     parser.add_argument("--flicker-freq", type=float, default=2.5,
-                        help="Temporal flicker frequency in Hz (default: 5.0, higher = faster flicker)")
+                        help="Temporal flicker frequency in Hz")
     parser.add_argument("--spatial-freq", type=int, default=8,
-                        help="Spatial pattern frequency (default: 4, lower = larger patterns = more effective)")
+                        help="Spatial pattern frequency (lower = larger patterns)")
     parser.add_argument("--num-basis", type=int, default=4,
-                        help="Number of basis patterns (default: 8, more = more expressive)")
+                        help="Number of basis patterns")
     parser.add_argument("--smoothness-weight", type=float, default=2.0,
-                        help="Temporal smoothness regularization weight (default: 1.0, lower = more aggressive)")
+                        help="Temporal smoothness regularization weight")
     parser.add_argument("--step-size", type=float, default=0.05,
-                        help="Optimizer step size / learning rate (default: 0.03)")
+                        help="Optimizer learning rate")
     parser.add_argument("--device", type=str, default="cuda")
 
     args = parser.parse_args()
 
     print("=" * 70)
-    print(f"Improved Video Attack: {args.attack}")
+    print(f"Video Attack: {args.attack}")
     print("=" * 70)
 
     output_path = Path(args.output_dir)
@@ -754,6 +670,7 @@ def main():
     from adversarial_attacks.real_data_loader import AdversarialTestDataset
     dataset = AdversarialTestDataset(device=args.device)
 
+    # Get fake samples to attack
     fake_indices = [i for i, s in enumerate(dataset.samples) if s.get('fake_label', 0) == 1]
     test_indices = fake_indices[:args.num_samples]
 
@@ -815,7 +732,7 @@ def main():
             traceback.print_exc()
             results.append({'error': str(e), 'sample_index': sample_idx})
 
-    # Summary
+    # Print summary
     print()
     print("=" * 70)
     print("SUMMARY")
