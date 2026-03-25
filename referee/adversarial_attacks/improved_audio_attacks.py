@@ -30,12 +30,10 @@ try:
     HAVE_SOUNDFILE = True
 except ImportError:
     HAVE_SOUNDFILE = False
-    print("Warning: soundfile not found. Install with: pip install soundfile")
+    print("Warning: soundfile not found.")
 
 
-# =============================================================================
 # Differentiable Mel Transform
-# =============================================================================
 
 class DifferentiableMelTransform(nn.Module):
     """
@@ -132,9 +130,7 @@ class DifferentiableMelTransform(nn.Module):
         return mel
 
 
-# =============================================================================
 # Psychoacoustic Attack
-# =============================================================================
 
 class ImprovedPsychoacousticAttack:
     """
@@ -303,10 +299,12 @@ class ImprovedPsychoacousticAttack:
             else:
                 loss = classification_loss
 
+            # Backpropagation
             self.model.zero_grad()
             loss.backward()
             grad = delta.grad.detach()
 
+            # Update perturbation with masking and momentum
             with torch.no_grad():
                 grad_masked = grad * masking_curve
                 grad_norm = torch.norm(grad_masked.view(B, -1), dim=1, keepdim=True).view(B, 1) + 1e-10
@@ -330,7 +328,7 @@ class ImprovedPsychoacousticAttack:
             if verbose and (i % 50 == 0 or i == self.num_iterations - 1):
                 print(f"Iter {i:3d}: Real={current_real_prob:.4f}, step={current_step:.4f}")
 
-            if current_real_prob > 0.95:
+            if current_real_prob > 0.7:
                 if verbose:
                     print(f"  Early stop at iter {i}!")
                 break
@@ -338,6 +336,7 @@ class ImprovedPsychoacousticAttack:
         attack_time = time.time() - start_time
         adv_waveform = orig_waveform + best_delta
 
+        # Evaluation
         with torch.no_grad():
             adv_mel = self.mel_transform(adv_waveform)
             logits = self.model(target_video, adv_mel, ref_video, ref_audio)[0]
@@ -499,9 +498,7 @@ class MelSpacePGDAttack:
         return adv_audio, info
 
 
-# =============================================================================
 # Utilities
-# =============================================================================
 
 def extract_audio_from_video(video_path: str, sample_rate: int = 16000) -> np.ndarray:
     """Extract audio from video file using ffmpeg."""
@@ -557,9 +554,7 @@ def load_model(device: str = 'cuda'):
     return model
 
 
-# =============================================================================
 # Main
-# =============================================================================
 
 def main():
     parser = argparse.ArgumentParser(description="Audio adversarial attacks for Referee")
@@ -592,10 +587,10 @@ def main():
         args.masking_strength = 0.3
         print("Using QUALITY preset: prioritizes audio quality")
     elif args.preset == "balanced":
-        args.eps = 0.15
+        args.eps = 0.05
         args.target_snr = 35.0
-        args.snr_weight = 0.1
-        args.masking_strength = 0.5
+        args.snr_weight = 0.02
+        args.masking_strength = 0.1
         print("Using BALANCED preset")
     elif args.preset == "effective":
         args.eps = 0.30

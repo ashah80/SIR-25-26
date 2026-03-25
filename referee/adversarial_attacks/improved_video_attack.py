@@ -41,9 +41,7 @@ except ImportError:
     HAVE_ART = False
 
 
-# =============================================================================
 # Video Saving
-# =============================================================================
 
 def save_video_non_overlapping(
     video_tensor: torch.Tensor,
@@ -54,7 +52,7 @@ def save_video_non_overlapping(
     std: Tuple[float, ...] = (0.5, 0.5, 0.5)
 ):
     """
-    Save video tensor as MP4, handling overlapping segments properly.
+    Save video tensor as MP4.
 
     The model uses 8 segments with 50% overlap. We only use the non-overlapping
     portion of each segment to avoid frame repetition.
@@ -113,13 +111,11 @@ def save_video_non_overlapping(
     print(f"  Saved video ({len(frames)} frames): {save_path}")
 
 
-# =============================================================================
 # Flickering Attack
-# =============================================================================
 
 class FlickeringAttack:
     """
-    Video attack using temporally smooth, learnable basis patterns.
+    Video attack using temporally smooth, learnable basis patterns. Inspired by ART.
 
     Creates perturbations that:
     - Flicker at specific frequencies (often imperceptible to humans)
@@ -516,9 +512,7 @@ def run_improved_art_attack(
     return adv_video, info
 
 
-# =============================================================================
 # Model Loading
-# =============================================================================
 
 def load_model(device: str = 'cuda'):
     """Load the Referee model with pretrained weights."""
@@ -565,9 +559,7 @@ def load_sample(dataset, idx: int, device: str):
     )
 
 
-# =============================================================================
 # Visualization
-# =============================================================================
 
 def save_comparison(orig_video, adv_video, save_path: Path, num_frames: int = 8):
     """Save a visual comparison of original vs adversarial frames."""
@@ -625,9 +617,7 @@ def save_stats(info: Dict, save_path: Path):
     print(f"  Saved stats: {save_path}")
 
 
-# =============================================================================
 # Main
-# =============================================================================
 
 def main():
     parser = argparse.ArgumentParser(description="Video adversarial attacks for Referee")
