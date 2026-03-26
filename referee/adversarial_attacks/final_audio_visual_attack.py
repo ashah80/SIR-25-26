@@ -299,6 +299,299 @@ def save_stats(info: Dict, save_path: Path):
     print(f"  Saved stats: {save_path}")
 
 
+def save_detailed_results(results: list, output_path: Path, args):
+    """
+    Save comprehensive results data for visualization and analysis.
+    
+    This generates a detailed text file with:
+    - Experiment configuration
+    - Per-sample data in CSV-like format (easy to parse)
+    - Aggregate statistics
+    - All metrics needed for graphs
+    """
+    from datetime import datetime
+    
+    with open(output_path, 'w') as f:
+        # ================================================================
+        # HEADER
+        # ================================================================
+        f.write("=" * 80 + "\n")
+        f.write("AUDIO-VISUAL ADVERSARIAL ATTACK - DETAILED RESULTS\n")
+        f.write("=" * 80 + "\n")
+        f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"Total Samples: {len(results)}\n")
+        f.write("\n")
+        
+        # ================================================================
+        # EXPERIMENT CONFIGURATION
+        # ================================================================
+        f.write("=" * 80 + "\n")
+        f.write("EXPERIMENT CONFIGURATION\n")
+        f.write("=" * 80 + "\n")
+        f.write("\n[Video Attack Parameters]\n")
+        f.write(f"video_eps={args.video_eps}\n")
+        f.write(f"video_iterations={args.video_iter}\n")
+        f.write(f"video_step_size={args.video_step_size}\n")
+        f.write(f"flicker_freq={args.flicker_freq}\n")
+        f.write(f"spatial_freq={args.spatial_freq}\n")
+        f.write(f"num_basis={args.num_basis}\n")
+        f.write(f"smoothness_weight={args.smoothness_weight}\n")
+        f.write("\n[Audio Attack Parameters]\n")
+        f.write(f"audio_eps={args.audio_eps}\n")
+        f.write(f"audio_iterations={args.audio_iter}\n")
+        f.write(f"target_snr_db={args.target_snr}\n")
+        f.write(f"snr_weight={args.snr_weight}\n")
+        f.write(f"masking_strength={args.masking_strength}\n")
+        f.write("\n[General]\n")
+        f.write(f"device={args.device}\n")
+        f.write(f"output_dir={args.output_dir}\n")
+        f.write("\n")
+        
+        # ================================================================
+        # AGGREGATE STATISTICS
+        # ================================================================
+        f.write("=" * 80 + "\n")
+        f.write("AGGREGATE STATISTICS\n")
+        f.write("=" * 80 + "\n\n")
+        
+        if results:
+            n = len(results)
+            
+            # Success rates
+            video_successes = sum(1 for r in results if r.get('video_only_attack_success', False))
+            audio_successes = sum(1 for r in results if r.get('audio_only_attack_success', False))
+            combined_successes = sum(1 for r in results if r.get('combined_attack_success', False))
+            
+            f.write("[Success Rates]\n")
+            f.write(f"video_only_success_count={video_successes}\n")
+            f.write(f"video_only_success_rate={video_successes/n:.4f}\n")
+            f.write(f"audio_only_success_count={audio_successes}\n")
+            f.write(f"audio_only_success_rate={audio_successes/n:.4f}\n")
+            f.write(f"combined_success_count={combined_successes}\n")
+            f.write(f"combined_success_rate={combined_successes/n:.4f}\n")
+            f.write("\n")
+            
+            # Confidence changes
+            video_changes = [r['video_only_confidence_change'] for r in results]
+            audio_changes = [r['audio_only_confidence_change'] for r in results]
+            combined_changes = [r['combined_confidence_change'] for r in results]
+            
+            f.write("[Confidence Change Statistics]\n")
+            f.write(f"video_only_change_mean={np.mean(video_changes):.6f}\n")
+            f.write(f"video_only_change_std={np.std(video_changes):.6f}\n")
+            f.write(f"video_only_change_min={np.min(video_changes):.6f}\n")
+            f.write(f"video_only_change_max={np.max(video_changes):.6f}\n")
+            f.write(f"audio_only_change_mean={np.mean(audio_changes):.6f}\n")
+            f.write(f"audio_only_change_std={np.std(audio_changes):.6f}\n")
+            f.write(f"audio_only_change_min={np.min(audio_changes):.6f}\n")
+            f.write(f"audio_only_change_max={np.max(audio_changes):.6f}\n")
+            f.write(f"combined_change_mean={np.mean(combined_changes):.6f}\n")
+            f.write(f"combined_change_std={np.std(combined_changes):.6f}\n")
+            f.write(f"combined_change_min={np.min(combined_changes):.6f}\n")
+            f.write(f"combined_change_max={np.max(combined_changes):.6f}\n")
+            f.write("\n")
+            
+            # Real probability statistics
+            orig_probs = [r['original_real_prob'] for r in results]
+            video_probs = [r['video_only_real_prob'] for r in results]
+            audio_probs = [r['audio_only_real_prob'] for r in results]
+            combined_probs = [r['combined_real_prob'] for r in results]
+            
+            f.write("[Real Probability Statistics]\n")
+            f.write(f"original_prob_mean={np.mean(orig_probs):.6f}\n")
+            f.write(f"original_prob_std={np.std(orig_probs):.6f}\n")
+            f.write(f"video_only_prob_mean={np.mean(video_probs):.6f}\n")
+            f.write(f"video_only_prob_std={np.std(video_probs):.6f}\n")
+            f.write(f"audio_only_prob_mean={np.mean(audio_probs):.6f}\n")
+            f.write(f"audio_only_prob_std={np.std(audio_probs):.6f}\n")
+            f.write(f"combined_prob_mean={np.mean(combined_probs):.6f}\n")
+            f.write(f"combined_prob_std={np.std(combined_probs):.6f}\n")
+            f.write("\n")
+            
+            # Perturbation statistics
+            video_linf = [r.get('video_perturbation_linf', 0) for r in results]
+            video_l2 = [r.get('video_perturbation_l2', 0) for r in results]
+            audio_linf = [r.get('audio_perturbation_linf', 0) for r in results]
+            audio_snr = [r.get('audio_perturbation_snr_db', 0) for r in results]
+            
+            f.write("[Perturbation Statistics]\n")
+            f.write(f"video_linf_mean={np.mean(video_linf):.6f}\n")
+            f.write(f"video_linf_std={np.std(video_linf):.6f}\n")
+            f.write(f"video_l2_mean={np.mean(video_l2):.6f}\n")
+            f.write(f"video_l2_std={np.std(video_l2):.6f}\n")
+            f.write(f"audio_linf_mean={np.mean(audio_linf):.6f}\n")
+            f.write(f"audio_linf_std={np.std(audio_linf):.6f}\n")
+            f.write(f"audio_snr_mean={np.mean(audio_snr):.6f}\n")
+            f.write(f"audio_snr_std={np.std(audio_snr):.6f}\n")
+            f.write("\n")
+            
+            # Timing statistics
+            video_times = [r.get('video_attack_time_seconds', 0) for r in results]
+            audio_times = [r.get('audio_attack_time_seconds', 0) for r in results]
+            total_times = [r.get('total_attack_time_seconds', 0) for r in results]
+            
+            f.write("[Timing Statistics (seconds)]\n")
+            f.write(f"video_attack_time_mean={np.mean(video_times):.2f}\n")
+            f.write(f"video_attack_time_total={np.sum(video_times):.2f}\n")
+            f.write(f"audio_attack_time_mean={np.mean(audio_times):.2f}\n")
+            f.write(f"audio_attack_time_total={np.sum(audio_times):.2f}\n")
+            f.write(f"total_time_mean={np.mean(total_times):.2f}\n")
+            f.write(f"total_time_sum={np.sum(total_times):.2f}\n")
+            f.write("\n")
+            
+            # Best attack analysis
+            video_best = sum(1 for r in results if r['video_only_confidence_change'] >= r['audio_only_confidence_change'] 
+                           and r['video_only_confidence_change'] >= r['combined_confidence_change'])
+            audio_best = sum(1 for r in results if r['audio_only_confidence_change'] >= r['video_only_confidence_change']
+                           and r['audio_only_confidence_change'] >= r['combined_confidence_change'])
+            combined_best = sum(1 for r in results if r['combined_confidence_change'] >= r['video_only_confidence_change']
+                              and r['combined_confidence_change'] >= r['audio_only_confidence_change'])
+            
+            f.write("[Best Attack Per Sample]\n")
+            f.write(f"video_best_count={video_best}\n")
+            f.write(f"audio_best_count={audio_best}\n")
+            f.write(f"combined_best_count={combined_best}\n")
+            f.write("\n")
+        
+        # ================================================================
+        # PER-SAMPLE DATA (CSV FORMAT)
+        # ================================================================
+        f.write("=" * 80 + "\n")
+        f.write("PER-SAMPLE DATA (CSV FORMAT)\n")
+        f.write("=" * 80 + "\n")
+        f.write("# Copy the lines below to create a CSV file for analysis\n\n")
+        
+        # CSV Header
+        csv_columns = [
+            "sample_id",
+            "sample_index",
+            "source_file",
+            "original_real_prob",
+            "original_fake_prob",
+            "video_only_real_prob",
+            "video_only_confidence_change",
+            "video_only_attack_success",
+            "audio_only_real_prob",
+            "audio_only_confidence_change",
+            "audio_only_attack_success",
+            "combined_real_prob",
+            "combined_confidence_change",
+            "combined_attack_success",
+            "video_perturbation_linf",
+            "video_perturbation_l2",
+            "audio_perturbation_linf",
+            "audio_perturbation_snr_db",
+            "video_attack_time_seconds",
+            "audio_attack_time_seconds",
+            "total_attack_time_seconds",
+            "best_attack"
+        ]
+        
+        f.write(",".join(csv_columns) + "\n")
+        
+        # CSV Data rows
+        for idx, r in enumerate(results, 1):
+            # Determine best attack for this sample
+            changes = {
+                'video': r.get('video_only_confidence_change', 0),
+                'audio': r.get('audio_only_confidence_change', 0),
+                'combined': r.get('combined_confidence_change', 0)
+            }
+            best_attack = max(changes, key=changes.get)
+            
+            row = [
+                str(idx),
+                str(r.get('sample_index', '')),
+                str(r.get('source_file', '')).replace(',', ';'),  # Escape commas
+                f"{r.get('original_real_prob', 0):.6f}",
+                f"{r.get('original_fake_prob', 0):.6f}",
+                f"{r.get('video_only_real_prob', 0):.6f}",
+                f"{r.get('video_only_confidence_change', 0):.6f}",
+                str(int(r.get('video_only_attack_success', False))),
+                f"{r.get('audio_only_real_prob', 0):.6f}",
+                f"{r.get('audio_only_confidence_change', 0):.6f}",
+                str(int(r.get('audio_only_attack_success', False))),
+                f"{r.get('combined_real_prob', 0):.6f}",
+                f"{r.get('combined_confidence_change', 0):.6f}",
+                str(int(r.get('combined_attack_success', False))),
+                f"{r.get('video_perturbation_linf', 0):.6f}",
+                f"{r.get('video_perturbation_l2', 0):.6f}",
+                f"{r.get('audio_perturbation_linf', 0):.6f}",
+                f"{r.get('audio_perturbation_snr_db', 0):.6f}",
+                f"{r.get('video_attack_time_seconds', 0):.2f}",
+                f"{r.get('audio_attack_time_seconds', 0):.2f}",
+                f"{r.get('total_attack_time_seconds', 0):.2f}",
+                best_attack
+            ]
+            f.write(",".join(row) + "\n")
+        
+        f.write("\n")
+        
+        # ================================================================
+        # RAW DATA ARRAYS (for easy copy-paste into Python/plotting)
+        # ================================================================
+        f.write("=" * 80 + "\n")
+        f.write("RAW DATA ARRAYS (Python format - copy directly into scripts)\n")
+        f.write("=" * 80 + "\n\n")
+        
+        if results:
+            # Original probabilities
+            f.write("# Original real probabilities (before any attack)\n")
+            f.write(f"original_probs = {[round(r['original_real_prob'], 6) for r in results]}\n\n")
+            
+            # Video-only results
+            f.write("# Video-only attack results\n")
+            f.write(f"video_only_probs = {[round(r['video_only_real_prob'], 6) for r in results]}\n")
+            f.write(f"video_only_changes = {[round(r['video_only_confidence_change'], 6) for r in results]}\n")
+            f.write(f"video_only_successes = {[int(r['video_only_attack_success']) for r in results]}\n\n")
+            
+            # Audio-only results
+            f.write("# Audio-only attack results\n")
+            f.write(f"audio_only_probs = {[round(r['audio_only_real_prob'], 6) for r in results]}\n")
+            f.write(f"audio_only_changes = {[round(r['audio_only_confidence_change'], 6) for r in results]}\n")
+            f.write(f"audio_only_successes = {[int(r['audio_only_attack_success']) for r in results]}\n\n")
+            
+            # Combined results
+            f.write("# Combined attack results\n")
+            f.write(f"combined_probs = {[round(r['combined_real_prob'], 6) for r in results]}\n")
+            f.write(f"combined_changes = {[round(r['combined_confidence_change'], 6) for r in results]}\n")
+            f.write(f"combined_successes = {[int(r['combined_attack_success']) for r in results]}\n\n")
+            
+            # Perturbation metrics
+            f.write("# Perturbation metrics\n")
+            f.write(f"video_linf_norms = {[round(r.get('video_perturbation_linf', 0), 6) for r in results]}\n")
+            f.write(f"video_l2_norms = {[round(r.get('video_perturbation_l2', 0), 6) for r in results]}\n")
+            f.write(f"audio_linf_norms = {[round(r.get('audio_perturbation_linf', 0), 6) for r in results]}\n")
+            f.write(f"audio_snr_dbs = {[round(r.get('audio_perturbation_snr_db', 0), 2) for r in results]}\n\n")
+            
+            # Timing
+            f.write("# Attack timing (seconds)\n")
+            f.write(f"video_times = {[round(r.get('video_attack_time_seconds', 0), 2) for r in results]}\n")
+            f.write(f"audio_times = {[round(r.get('audio_attack_time_seconds', 0), 2) for r in results]}\n")
+            f.write(f"total_times = {[round(r.get('total_attack_time_seconds', 0), 2) for r in results]}\n\n")
+        
+        # ================================================================
+        # VISUALIZATION SUGGESTIONS
+        # ================================================================
+        f.write("=" * 80 + "\n")
+        f.write("VISUALIZATION SUGGESTIONS\n")
+        f.write("=" * 80 + "\n\n")
+        f.write("Recommended graphs to generate from this data:\n\n")
+        f.write("1. BAR CHART: Success rates comparison (video vs audio vs combined)\n")
+        f.write("2. BOX PLOT: Confidence change distribution by attack type\n")
+        f.write("3. SCATTER PLOT: Original prob vs final prob (color by attack type)\n")
+        f.write("4. LINE PLOT: Per-sample comparison (sample ID on x-axis)\n")
+        f.write("5. HISTOGRAM: Distribution of confidence changes\n")
+        f.write("6. STACKED BAR: Best attack type distribution\n")
+        f.write("7. SCATTER: Perturbation magnitude vs confidence change\n")
+        f.write("8. HEATMAP: Correlation between metrics\n")
+        f.write("\n")
+        
+        f.write("=" * 80 + "\n")
+        f.write("END OF RESULTS FILE\n")
+        f.write("=" * 80 + "\n")
+
+
 class FinalAudioVisualAttack:
     """
     Final audio-visual attack that evaluates all three scenarios:
@@ -775,6 +1068,17 @@ def main():
             f.write(f"{'Combined':<15} {f'{combined_successes}/{n} ({100*combined_successes/n:.0f}%)':>15} {avg_combined_change:>+20.4f}\n")
             f.write("-" * 50 + "\n")
             f.write(f"\nMost effective overall: {best}\n")
+
+    # ================================================================
+    # Save Detailed Results for Visualization (audiovisualresults.txt)
+    # ================================================================
+    detailed_results_path = output_path / "audiovisualresults.txt"
+    save_detailed_results(
+        results=valid,
+        output_path=detailed_results_path,
+        args=args
+    )
+    print(f"Detailed results saved to: {detailed_results_path}")
 
     print()
     print(f"Outputs saved to: {output_path.absolute()}")
