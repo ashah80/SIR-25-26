@@ -549,18 +549,13 @@ def create_mse_vs_probability_change_scatter(data: Dict, output_path: Path, resu
     print("  Calculating MSE values from video files...")
     mse_values = collect_mse_data(results_dir, n_samples)
     
-    # Get probability changes (use combined or video-only if available)
-    if 'combined_changes' in arrays:
-        prob_changes = arrays['combined_changes']
-        successes_raw = arrays.get('combined_successes', np.array([]))
-        attack_type = "Combined Attack"
-    elif 'video_only_changes' in arrays:
-        prob_changes = arrays['video_only_changes']
-        successes_raw = arrays.get('video_only_successes', np.array([]))
-        attack_type = "Video-Only Attack"
-    else:
-        print("  Skipped: mse_vs_probability_change.png (no probability change data)")
+    # Use video-only attack data (MSE is a video metric)
+    if 'video_only_changes' not in arrays:
+        print("  Skipped: mse_vs_probability_change.png (no video probability change data)")
         return
+    
+    prob_changes = arrays['video_only_changes']
+    successes_raw = arrays.get('video_only_successes', np.array([]))
     
     # Convert successes to boolean list (handles numpy arrays with 1.0/0.0)
     successes = [bool(s) for s in successes_raw] if len(successes_raw) > 0 else [False] * len(prob_changes)
@@ -595,7 +590,7 @@ def create_mse_vs_probability_change_scatter(data: Dict, output_path: Path, resu
     
     ax.set_xlabel('Mean Squared Error (MSE)', fontsize=12)
     ax.set_ylabel('Probability Change (Δ Real Probability)', fontsize=12)
-    ax.set_title(f'Video MSE vs Probability Change ({attack_type})', fontsize=14, fontweight='bold')
+    ax.set_title('Video MSE vs Probability Change (Video-Only Attack)', fontsize=14, fontweight='bold')
     
     # Legend in upper left
     success_patch = mpatches.Patch(color='green', label='Attack Success')
