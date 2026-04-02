@@ -552,15 +552,18 @@ def create_mse_vs_probability_change_scatter(data: Dict, output_path: Path, resu
     # Get probability changes (use combined or video-only if available)
     if 'combined_changes' in arrays:
         prob_changes = arrays['combined_changes']
-        successes = arrays.get('combined_successes', [])
+        successes_raw = arrays.get('combined_successes', np.array([]))
         attack_type = "Combined Attack"
     elif 'video_only_changes' in arrays:
         prob_changes = arrays['video_only_changes']
-        successes = arrays.get('video_only_successes', [])
+        successes_raw = arrays.get('video_only_successes', np.array([]))
         attack_type = "Video-Only Attack"
     else:
         print("  Skipped: mse_vs_probability_change.png (no probability change data)")
         return
+    
+    # Convert successes to boolean list (handles numpy arrays with 1.0/0.0)
+    successes = [bool(s) for s in successes_raw] if len(successes_raw) > 0 else [False] * len(prob_changes)
     
     # Filter out None MSE values and align data
     valid_indices = [i for i, mse in enumerate(mse_values) if mse is not None]
@@ -569,15 +572,12 @@ def create_mse_vs_probability_change_scatter(data: Dict, output_path: Path, resu
         print("  Skipped: mse_vs_probability_change.png (could not calculate MSE for any sample)")
         return
     
-    filtered_mse = [mse_values[i] for i in valid_indices]
-    filtered_changes = [prob_changes[i] for i in valid_indices if i < len(prob_changes)]
-    filtered_successes = [successes[i] if i < len(successes) else False for i in valid_indices]
+    # Only include indices that exist in all arrays
+    valid_indices = [i for i in valid_indices if i < len(prob_changes) and i < len(successes)]
     
-    # Ensure arrays are same length
-    min_len = min(len(filtered_mse), len(filtered_changes))
-    filtered_mse = filtered_mse[:min_len]
-    filtered_changes = filtered_changes[:min_len]
-    filtered_successes = filtered_successes[:min_len]
+    filtered_mse = [mse_values[i] for i in valid_indices]
+    filtered_changes = [prob_changes[i] for i in valid_indices]
+    filtered_successes = [successes[i] for i in valid_indices]
     
     if len(filtered_mse) == 0:
         print("  Skipped: mse_vs_probability_change.png (no valid data points)")
@@ -597,21 +597,10 @@ def create_mse_vs_probability_change_scatter(data: Dict, output_path: Path, resu
     ax.set_ylabel('Probability Change (Δ Real Probability)', fontsize=12)
     ax.set_title(f'Video MSE vs Probability Change ({attack_type})', fontsize=14, fontweight='bold')
     
-    # Legend
+    # Legend in upper left
     success_patch = mpatches.Patch(color='green', label='Attack Success')
     fail_patch = mpatches.Patch(color='red', label='Attack Failure')
-    ax.legend(handles=[success_patch, fail_patch], loc='upper right')
-    
-    # Add correlation coefficient if enough points
-    if len(filtered_mse) >= 3:
-        corr = np.corrcoef(filtered_mse, filtered_changes)[0, 1]
-        ax.text(0.02, 0.98, f'r = {corr:.3f}', transform=ax.transAxes, 
-                fontsize=10, verticalalignment='top',
-                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-    
-    # Sample count
-    ax.text(0.02, 0.90, f'n = {len(filtered_mse)} samples', transform=ax.transAxes,
-            fontsize=10, verticalalignment='top')
+    ax.legend(handles=[success_patch, fail_patch], loc='upper left')
     
     plt.tight_layout()
     plt.savefig(output_path / 'mse_vs_probability_change.png', dpi=150, bbox_inches='tight')
@@ -641,35 +630,27 @@ def create_snr_vs_probability_change_scatter(data: Dict, output_path: Path):
         print("  Skipped: snr_vs_probability_change.png (no data)")
         return
     
+    # Convert successes to boolean list (handles numpy arrays with 1.0/0.0)
+    successes_bool = [bool(s) for s in successes]
+    
     fig, ax = plt.subplots(figsize=(10, 7))
     
     # Color by success/failure
-    colors = ['green' if s else 'red' for s in successes]
+    colors = ['green' if s else 'red' for s in successes_bool]
     
     ax.scatter(snr_values, prob_changes, c=colors, s=100, alpha=0.7, edgecolors='black')
     
     # Reference lines
-    ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5, label='No change')
+    ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
     
     ax.set_xlabel('Audio SNR (dB) — Higher = Less Perturbed', fontsize=12)
     ax.set_ylabel('Probability Change (Δ Real Probability)', fontsize=12)
     ax.set_title('Audio SNR vs Probability Change', fontsize=14, fontweight='bold')
     
-    # Legend
+    # Legend in upper left
     success_patch = mpatches.Patch(color='green', label='Attack Success')
     fail_patch = mpatches.Patch(color='red', label='Attack Failure')
-    ax.legend(handles=[success_patch, fail_patch], loc='upper right')
-    
-    # Add correlation coefficient if enough points
-    if len(snr_values) >= 3:
-        corr = np.corrcoef(snr_values, prob_changes)[0, 1]
-        ax.text(0.02, 0.98, f'r = {corr:.3f}', transform=ax.transAxes, 
-                fontsize=10, verticalalignment='top',
-                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-    
-    # Sample count
-    ax.text(0.02, 0.90, f'n = {len(snr_values)} samples', transform=ax.transAxes,
-            fontsize=10, verticalalignment='top')
+    ax.legend(handles=[success_patch, fail_patch], loc='upper left')
     
     plt.tight_layout()
     plt.savefig(output_path / 'snr_vs_probability_change.png', dpi=150, bbox_inches='tight')
