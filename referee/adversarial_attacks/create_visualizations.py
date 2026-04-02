@@ -592,10 +592,10 @@ def create_mse_vs_probability_change_scatter(data: Dict, output_path: Path, resu
     ax.set_ylabel('Probability Change (Δ Real Probability)', fontsize=12)
     ax.set_title('Video MSE vs Probability Change (Video-Only Attack)', fontsize=14, fontweight='bold')
     
-    # Legend in upper left
+    # Legend in lower left (with offset to avoid x-axis)
     success_patch = mpatches.Patch(color='green', label='Attack Success')
     fail_patch = mpatches.Patch(color='red', label='Attack Failure')
-    ax.legend(handles=[success_patch, fail_patch], loc='upper left')
+    ax.legend(handles=[success_patch, fail_patch], loc='lower left', framealpha=0.9)
     
     plt.tight_layout()
     plt.savefig(output_path / 'mse_vs_probability_change.png', dpi=150, bbox_inches='tight')
