@@ -22,6 +22,13 @@ from matplotlib.gridspec import GridSpec
 import matplotlib
 matplotlib.use('Agg')
 
+try:
+    import cv2
+    CV2_AVAILABLE = True
+except ImportError:
+    CV2_AVAILABLE = False
+    print("Warning: OpenCV (cv2) not available. MSE visualization will be skipped.")
+
 # Set style for publication-quality figures
 plt.style.use('seaborn-v0_8-whitegrid')
 plt.rcParams['font.family'] = 'DejaVu Sans'
@@ -446,6 +453,230 @@ def create_timing_analysis_plot(data: Dict, output_path: Path):
     print(f"  Saved: timing_analysis.png")
 
 
+def calculate_video_mse(original_path: Path, adversarial_path: Path) -> float:
+    """
+    Calculate Mean Squared Error between original and adversarial video frames.
+    
+    Args:
+        original_path: Path to original video file
+        adversarial_path: Path to adversarial video file
+        
+    Returns:
+        Mean MSE across all frames, or None if calculation fails
+    """
+    if not CV2_AVAILABLE:
+        return None
+    
+    if not original_path.exists() or not adversarial_path.exists():
+        return None
+    
+    try:
+        cap_orig = cv2.VideoCapture(str(original_path))
+        cap_adv = cv2.VideoCapture(str(adversarial_path))
+        
+        mse_values = []
+        
+        while True:
+            ret_orig, frame_orig = cap_orig.read()
+            ret_adv, frame_adv = cap_adv.read()
+            
+            if not ret_orig or not ret_adv:
+                break
+            
+            # Convert to float for MSE calculation
+            frame_orig = frame_orig.astype(np.float64)
+            frame_adv = frame_adv.astype(np.float64)
+            
+            # Calculate MSE for this frame
+            mse = np.mean((frame_orig - frame_adv) ** 2)
+            mse_values.append(mse)
+        
+        cap_orig.release()
+        cap_adv.release()
+        
+        if mse_values:
+            return np.mean(mse_values)
+        return None
+        
+    except Exception as e:
+        print(f"    Warning: Could not calculate MSE: {e}")
+        return None
+
+
+def collect_mse_data(results_dir: Path, n_samples: int) -> List[float]:
+    """
+    Collect MSE values from all sample directories.
+    
+    Args:
+        results_dir: Base results directory (e.g., ./final_audiovisualattack)
+        n_samples: Number of samples to check
+        
+    Returns:
+        List of MSE values (None for samples where calculation failed)
+    """
+    mse_values = []
+    
+    for i in range(1, n_samples + 1):
+        sample_dir = results_dir / f"sample_{i}"
+        original_video = sample_dir / "02_original_video_processed.mp4"
+        adversarial_video = sample_dir / "04_adversarial_video.mp4"
+        
+        mse = calculate_video_mse(original_video, adversarial_video)
+        mse_values.append(mse)
+    
+    return mse_values
+
+
+def create_mse_vs_probability_change_scatter(data: Dict, output_path: Path, results_dir: Path):
+    """
+    Create scatter plot of MSE vs probability change for combined attacks.
+    
+    This visualization shows the relationship between the amount of visual
+    perturbation (measured by MSE) and the effectiveness of the attack
+    (measured by probability change).
+    """
+    if not CV2_AVAILABLE:
+        print("  Skipped: mse_vs_probability_change.png (OpenCV not available)")
+        return
+    
+    arrays = data['arrays']
+    n_samples = len(data['samples'])
+    
+    if n_samples == 0:
+        print("  Skipped: mse_vs_probability_change.png (no samples)")
+        return
+    
+    print("  Calculating MSE values from video files...")
+    mse_values = collect_mse_data(results_dir, n_samples)
+    
+    # Get probability changes (use combined or video-only if available)
+    if 'combined_changes' in arrays:
+        prob_changes = arrays['combined_changes']
+        successes = arrays.get('combined_successes', [])
+        attack_type = "Combined Attack"
+    elif 'video_only_changes' in arrays:
+        prob_changes = arrays['video_only_changes']
+        successes = arrays.get('video_only_successes', [])
+        attack_type = "Video-Only Attack"
+    else:
+        print("  Skipped: mse_vs_probability_change.png (no probability change data)")
+        return
+    
+    # Filter out None MSE values and align data
+    valid_indices = [i for i, mse in enumerate(mse_values) if mse is not None]
+    
+    if len(valid_indices) == 0:
+        print("  Skipped: mse_vs_probability_change.png (could not calculate MSE for any sample)")
+        return
+    
+    filtered_mse = [mse_values[i] for i in valid_indices]
+    filtered_changes = [prob_changes[i] for i in valid_indices if i < len(prob_changes)]
+    filtered_successes = [successes[i] if i < len(successes) else False for i in valid_indices]
+    
+    # Ensure arrays are same length
+    min_len = min(len(filtered_mse), len(filtered_changes))
+    filtered_mse = filtered_mse[:min_len]
+    filtered_changes = filtered_changes[:min_len]
+    filtered_successes = filtered_successes[:min_len]
+    
+    if len(filtered_mse) == 0:
+        print("  Skipped: mse_vs_probability_change.png (no valid data points)")
+        return
+    
+    fig, ax = plt.subplots(figsize=(10, 7))
+    
+    # Color by success/failure
+    colors = ['green' if s else 'red' for s in filtered_successes]
+    
+    ax.scatter(filtered_mse, filtered_changes, c=colors, s=100, alpha=0.7, edgecolors='black')
+    
+    # Reference lines
+    ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5, label='No change')
+    
+    ax.set_xlabel('Mean Squared Error (MSE)', fontsize=12)
+    ax.set_ylabel('Probability Change (Δ Real Probability)', fontsize=12)
+    ax.set_title(f'Video MSE vs Probability Change ({attack_type})', fontsize=14, fontweight='bold')
+    
+    # Legend
+    success_patch = mpatches.Patch(color='green', label='Attack Success')
+    fail_patch = mpatches.Patch(color='red', label='Attack Failure')
+    ax.legend(handles=[success_patch, fail_patch], loc='upper right')
+    
+    # Add correlation coefficient if enough points
+    if len(filtered_mse) >= 3:
+        corr = np.corrcoef(filtered_mse, filtered_changes)[0, 1]
+        ax.text(0.02, 0.98, f'r = {corr:.3f}', transform=ax.transAxes, 
+                fontsize=10, verticalalignment='top',
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+    
+    # Sample count
+    ax.text(0.02, 0.90, f'n = {len(filtered_mse)} samples', transform=ax.transAxes,
+            fontsize=10, verticalalignment='top')
+    
+    plt.tight_layout()
+    plt.savefig(output_path / 'mse_vs_probability_change.png', dpi=150, bbox_inches='tight')
+    plt.close()
+    print(f"  Saved: mse_vs_probability_change.png")
+
+
+def create_snr_vs_probability_change_scatter(data: Dict, output_path: Path):
+    """
+    Create standalone scatter plot of Audio SNR vs probability change.
+    
+    Shows the relationship between audio perturbation quality (SNR) and
+    attack effectiveness, with success/failure indicated by color.
+    No trend line - just the raw data points.
+    """
+    arrays = data['arrays']
+    
+    if 'audio_snr_dbs' not in arrays or 'audio_only_changes' not in arrays:
+        print("  Skipped: snr_vs_probability_change.png (missing SNR or probability data)")
+        return
+    
+    snr_values = arrays['audio_snr_dbs']
+    prob_changes = arrays['audio_only_changes']
+    successes = arrays.get('audio_only_successes', [False] * len(snr_values))
+    
+    if len(snr_values) == 0:
+        print("  Skipped: snr_vs_probability_change.png (no data)")
+        return
+    
+    fig, ax = plt.subplots(figsize=(10, 7))
+    
+    # Color by success/failure
+    colors = ['green' if s else 'red' for s in successes]
+    
+    ax.scatter(snr_values, prob_changes, c=colors, s=100, alpha=0.7, edgecolors='black')
+    
+    # Reference lines
+    ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5, label='No change')
+    
+    ax.set_xlabel('Audio SNR (dB) — Higher = Less Perturbed', fontsize=12)
+    ax.set_ylabel('Probability Change (Δ Real Probability)', fontsize=12)
+    ax.set_title('Audio SNR vs Probability Change', fontsize=14, fontweight='bold')
+    
+    # Legend
+    success_patch = mpatches.Patch(color='green', label='Attack Success')
+    fail_patch = mpatches.Patch(color='red', label='Attack Failure')
+    ax.legend(handles=[success_patch, fail_patch], loc='upper right')
+    
+    # Add correlation coefficient if enough points
+    if len(snr_values) >= 3:
+        corr = np.corrcoef(snr_values, prob_changes)[0, 1]
+        ax.text(0.02, 0.98, f'r = {corr:.3f}', transform=ax.transAxes, 
+                fontsize=10, verticalalignment='top',
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+    
+    # Sample count
+    ax.text(0.02, 0.90, f'n = {len(snr_values)} samples', transform=ax.transAxes,
+            fontsize=10, verticalalignment='top')
+    
+    plt.tight_layout()
+    plt.savefig(output_path / 'snr_vs_probability_change.png', dpi=150, bbox_inches='tight')
+    plt.close()
+    print(f"  Saved: snr_vs_probability_change.png")
+
+
 def create_summary_dashboard(data: Dict, output_path: Path):
     """Create a comprehensive dashboard with key metrics."""
     fig = plt.figure(figsize=(16, 12))
@@ -585,7 +816,7 @@ def create_summary_dashboard(data: Dict, output_path: Path):
     print(f"  Saved: summary_dashboard.png")
 
 
-def create_all_visualizations(data: Dict, output_path: Path):
+def create_all_visualizations(data: Dict, output_path: Path, results_dir: Path = None):
     """Generate all visualizations."""
     print("\nGenerating visualizations...")
     
@@ -599,6 +830,11 @@ def create_all_visualizations(data: Dict, output_path: Path):
     create_best_attack_pie_chart(data, output_path)
     create_timing_analysis_plot(data, output_path)
     create_summary_dashboard(data, output_path)
+    
+    # New visualizations
+    create_snr_vs_probability_change_scatter(data, output_path)
+    if results_dir:
+        create_mse_vs_probability_change_scatter(data, output_path, results_dir)
     
     print(f"\nAll visualizations saved to: {output_path.absolute()}")
 
@@ -617,8 +853,10 @@ def main():
     # Determine results file path
     if args.results_file:
         results_path = Path(args.results_file)
+        results_dir = results_path.parent
     else:
-        results_path = Path(args.results_dir) / "audiovisualresults.txt"
+        results_dir = Path(args.results_dir)
+        results_path = results_dir / "audiovisualresults.txt"
     
     if not results_path.exists():
         print(f"Error: Results file not found: {results_path}")
@@ -645,8 +883,8 @@ def main():
     print(f"Aggregate statistics: {len(data['aggregate'])}")
     print(f"Data arrays: {len(data['arrays'])}")
     
-    # Generate visualizations
-    create_all_visualizations(data, output_path)
+    # Generate visualizations (pass results_dir for MSE calculation)
+    create_all_visualizations(data, output_path, results_dir)
     
     print("\nDone!")
 
